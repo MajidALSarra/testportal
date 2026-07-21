@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Countdown</string>
+    <string name="widget_label">Countdown</string>
+    <string name="widget_description">Shows days, hours and minutes left until your target.</string>
+</resources>

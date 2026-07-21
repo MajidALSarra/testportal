@@ -1,0 +1,7 @@
+# Downloaded build toolchain (fetched by build_apk.sh) and generated output
+.buildtools/*.jar
+.buildtools/aapt2
+.buildtools/prebuilt/
+.buildtools/*.class
+.buildtools/*.keystore
+build/
