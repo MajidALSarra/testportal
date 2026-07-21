@@ -5,3 +5,6 @@
 .buildtools/*.class
 .buildtools/*.keystore
 build/
+
+# Built APKs
+*.apk
