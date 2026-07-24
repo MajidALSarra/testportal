@@ -4,7 +4,7 @@
     android:minHeight="110dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_countdown"
-    android:previewLayout="@layout/widget_countdown"
+    android:configure="com.majid.countdown.WidgetConfigActivity"
     android:description="@string/widget_description"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

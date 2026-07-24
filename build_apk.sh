@@ -54,8 +54,8 @@ echo "==> [2/7] aapt2 link (binary manifest + resources.arsc + R.java)"
     --java "$OUT/gen" \
     --min-sdk-version "$MIN_SDK" \
     --target-sdk-version "$TARGET_SDK" \
-    --version-code 1 \
-    --version-name "1.0" \
+    --version-code 2 \
+    --version-name "2.0" \
     --auto-add-overlay
 
 echo "==> [3/7] javac (Java 8 bytecode for the dexer)"

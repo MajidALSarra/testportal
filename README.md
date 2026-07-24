@@ -1,40 +1,49 @@
-# Countdown — Android app + home-screen widget
+# Countdown — Android app + home-screen widgets
 
-A tiny Android app that lets you set a countdown in **days, hours and minutes**
-and shows the time remaining in a **home-screen widget**.
+Create as many countdowns as you like, each drawn in its own **animated style**,
+and put any of them on your home screen as a **widget** that uses the exact same
+look.
 
-![icon](app/res/drawable/ic_launcher.xml)
+## Features
 
-## What it does
+- **Multiple countdowns** — a beautiful scrolling list; tap a card to edit,
+  long-press to delete, tap **+** to add.
+- **Five appearance styles**, each animated:
+  - **Ring** — a depleting progress ring with a glowing head and the days in the centre
+  - **Boxes** — Days / Hours / Minutes / Seconds tiles with a ticking seconds pulse
+  - **Bars** — progress bars for each unit with a moving shimmer
+  - **Triangles** — liquid-fill triangles with a rippling surface
+  - **Dots** — a ring of dots that empties over time with an orbiting comet
+- **Six colour themes** per countdown.
+- **Home-screen widget** — renders the chosen countdown in the same style. When
+  you drop a widget you pick which countdown it shows; it refreshes about once a
+  minute and tapping it opens the app.
 
-- **App screen** — enter a title plus days / hours / minutes, tap **Start
-  countdown**. The target time is saved and the widget updates immediately.
-  On Android 8+ it also asks your launcher to pin the widget for you.
-- **Home-screen widget** — shows the big number of **days** left, plus
-  `Hh Mm left` underneath, and the countdown title. It refreshes about once a
-  minute and again whenever Android asks it to. Tapping it opens the app.
-  When the target passes it shows **Finished!**
+The app and the widget share one `Canvas` renderer, so a countdown looks
+identical in both places. (Animation runs live in the app; the widget shows a
+crisp still frame that updates each minute — Android widgets can't animate
+continuously.)
 
 ## Install the APK
 
 1. Copy `build/Countdown.apk` to your phone.
 2. Open it and allow "install from unknown sources" if prompted.
-3. Open **Countdown**, set your time, tap **Start countdown**.
-4. Add the widget: long-press an empty spot on the home screen →
-   **Widgets** → **Countdown** → drag it out.
+3. Open **Countdown**, tap **+**, set a title + days/hours/minutes, pick a style
+   and colour, **Save**.
+4. Add a widget: long-press the home screen → **Widgets** → **Countdown** →
+   drop it, then choose which countdown it should show.
 
-Requires **Android 7.0 (API 24) or newer**. The APK is signed with an APK
-Signature Scheme v2 signature.
+Requires **Android 7.0 (API 24) or newer**. Signed with an APK Signature
+Scheme v2 signature.
 
 ## Building it yourself
 
-There is no Android Studio / Android SDK dependency. `build_apk.sh` pulls a
-minimal toolchain from Maven Central and a public `android.jar` mirror, then
-compiles, dexes and signs the APK by hand:
+No Android Studio / Android SDK needed — `build_apk.sh` fetches a minimal
+toolchain from Maven Central plus a public `android.jar` mirror, then compiles,
+dexes and signs by hand:
 
 ```bash
-./build_apk.sh
-# -> build/Countdown.apk
+./build_apk.sh      # -> build/Countdown.apk
 ```
 
 | Piece | Source |
@@ -44,8 +53,8 @@ compiles, dexes and signs the APK by hand:
 | `dalvik-dx` (dexer)         | `com.jakewharton.android.repackaged:dalvik-dx` |
 | `apksig` (v2 signer)        | `com.android.tools.build:apksig` |
 
-Downloaded tools are cached in `.buildtools/` (git-ignored) and the build key
-is generated on first run.
+Downloaded tools are cached in `.buildtools/` (git-ignored); the build key is
+generated on first run.
 
 ## Project layout
 
@@ -53,10 +62,15 @@ is generated on first run.
 app/
   AndroidManifest.xml
   java/com/majid/countdown/
-    MainActivity.java        # set title + days/hours/minutes
-    CountdownWidget.java      # AppWidgetProvider: renders + auto-refreshes
+    Countdown.java            # model
+    Store.java                # JSON persistence + widget bindings
+    CountdownRenderer.java    # the 5 styles, drawn on a Canvas (app + widget)
+    CountdownView.java        # animated card view used in the app
+    MainActivity.java         # the list
+    EditActivity.java         # add/edit: title, time, style, colour
+    CountdownWidget.java      # AppWidgetProvider (renders bitmaps)
+    WidgetConfigActivity.java # pick which countdown a widget shows
   res/
-    layout/activity_main.xml
     layout/widget_countdown.xml
     xml/countdown_widget_info.xml
     drawable/, values/

@@ -1,137 +1,156 @@
 package com.majid.countdown;
 
 import android.app.Activity;
-import android.appwidget.AppWidgetManager;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Build;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.util.List;
 
+/** Home screen of the app: every countdown drawn in its own animated style. */
 public class MainActivity extends Activity {
 
-    private EditText inputTitle;
-    private EditText inputDays;
-    private EditText inputHours;
-    private EditText inputMinutes;
-    private TextView preview;
-
-    private static final long DAY_MS = 86400000L;
-    private static final long HOUR_MS = 3600000L;
-    private static final long MIN_MS = 60000L;
+    private LinearLayout list;
+    private TextView empty;
+    private Store store;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        store = new Store(this);
+        getWindow().getDecorView().setBackgroundColor(0xFFF2F1F8);
 
-        inputTitle = (EditText) findViewById(R.id.input_title);
-        inputDays = (EditText) findViewById(R.id.input_days);
-        inputHours = (EditText) findViewById(R.id.input_hours);
-        inputMinutes = (EditText) findViewById(R.id.input_minutes);
-        preview = (TextView) findViewById(R.id.preview);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
 
-        SharedPreferences p = prefs();
-        inputTitle.setText(p.getString(CountdownWidget.KEY_TITLE, ""));
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(18), dp(20), dp(18), dp(28));
 
-        Button start = (Button) findViewById(R.id.btn_start);
-        start.setOnClickListener(new View.OnClickListener() {
+        // Header row.
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView h = new TextView(this);
+        h.setText("My Countdowns");
+        h.setTextColor(0xFF1B1A2E);
+        h.setTextSize(26);
+        h.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams hlp =
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        header.addView(h, hlp);
+
+        Button add = new Button(this);
+        add.setText("+");
+        add.setTextSize(26);
+        add.setTextColor(Color.WHITE);
+        add.setTypeface(Typeface.DEFAULT_BOLD);
+        add.setAllCaps(false);
+        add.setPadding(0, 0, 0, dp(4));
+        GradientDrawable fab = new GradientDrawable();
+        fab.setShape(GradientDrawable.OVAL);
+        fab.setColor(0xFF7C4DFF);
+        add.setBackground(fab);
+        add.setElevation(dp(4));
+        add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startCountdown();
+                startActivity(new Intent(MainActivity.this, EditActivity.class));
             }
         });
+        header.addView(add, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        root.addView(header);
 
-        refreshPreview();
+        TextView sub = new TextView(this);
+        sub.setText("Tap a card to edit · long-press to delete");
+        sub.setTextColor(0xFF8A889C);
+        sub.setTextSize(13);
+        sub.setPadding(dp(2), dp(4), 0, dp(16));
+        root.addView(sub);
+
+        empty = new TextView(this);
+        empty.setText("No countdowns yet.\nTap + to create your first one.");
+        empty.setTextColor(0xFF9A98AC);
+        empty.setTextSize(16);
+        empty.setGravity(Gravity.CENTER);
+        empty.setPadding(0, dp(80), 0, 0);
+        root.addView(empty);
+
+        list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        root.addView(list);
+
+        scroll.addView(root);
+        setContentView(scroll);
     }
 
-    private void startCountdown() {
-        long days = parse(inputDays);
-        long hours = parse(inputHours);
-        long minutes = parse(inputMinutes);
-        long totalMs = days * DAY_MS + hours * HOUR_MS + minutes * MIN_MS;
-
-        if (totalMs <= 0L) {
-            Toast.makeText(this, "Enter days, hours or minutes greater than 0",
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String title = inputTitle.getText().toString().trim();
-        if (TextUtils.isEmpty(title)) {
-            title = "Countdown";
-        }
-
-        long target = System.currentTimeMillis() + totalMs;
-
-        prefs().edit()
-                .putLong(CountdownWidget.KEY_TARGET, target)
-                .putString(CountdownWidget.KEY_TITLE, title)
-                .apply();
-
-        CountdownWidget.updateAll(this);
-        refreshPreview();
-        Toast.makeText(this, "Countdown started", Toast.LENGTH_SHORT).show();
-
-        offerToPinWidget();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        rebuild();
     }
 
-    /** On Android 8+ ask the launcher to pin the widget with one tap. */
-    private void offerToPinWidget() {
-        if (Build.VERSION.SDK_INT < 26) return;
-        AppWidgetManager awm = (AppWidgetManager) getSystemService(Context.APPWIDGET_SERVICE);
-        if (awm == null || !awm.isRequestPinAppWidgetSupported()) return;
-        ComponentName provider = new ComponentName(this, CountdownWidget.class);
-        try {
-            awm.requestPinAppWidget(provider, null, null);
-        } catch (Exception ignored) {
-            // Some launchers don't support pinning; the manual instructions still apply.
-        }
-    }
+    private void rebuild() {
+        list.removeAllViews();
+        List<Countdown> items = store.all();
+        empty.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
 
-    private void refreshPreview() {
-        SharedPreferences p = prefs();
-        long target = p.getLong(CountdownWidget.KEY_TARGET, 0L);
-        String title = p.getString(CountdownWidget.KEY_TITLE, "Countdown");
-        if (target <= 0L) {
-            preview.setText("No countdown set yet.");
-            return;
-        }
-        long diff = target - System.currentTimeMillis();
-        if (diff < 0L) diff = 0L;
-        long days = diff / DAY_MS;
-        long hours = (diff % DAY_MS) / HOUR_MS;
-        long minutes = (diff % HOUR_MS) / MIN_MS;
-
-        SimpleDateFormat fmt = new SimpleDateFormat("EEE, d MMM yyyy 'at' HH:mm", Locale.getDefault());
-        String when = fmt.format(new Date(target));
-
-        preview.setText(title + "\n"
-                + days + " days " + hours + "h " + minutes + "m left\n"
-                + "Target: " + when);
-    }
-
-    private long parse(EditText field) {
-        String s = field.getText().toString().trim();
-        if (TextUtils.isEmpty(s)) return 0L;
-        try {
-            return Long.parseLong(s);
-        } catch (NumberFormatException e) {
-            return 0L;
+        for (int i = 0; i < items.size(); i++) {
+            final Countdown c = items.get(i);
+            CountdownView cv = new CountdownView(this);
+            cv.bind(c);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(172));
+            lp.bottomMargin = dp(16);
+            cv.setLayoutParams(lp);
+            cv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent it = new Intent(MainActivity.this, EditActivity.class);
+                    it.putExtra("id", c.id);
+                    startActivity(it);
+                }
+            });
+            cv.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    confirmDelete(c);
+                    return true;
+                }
+            });
+            list.addView(cv);
         }
     }
 
-    private SharedPreferences prefs() {
-        return getSharedPreferences(CountdownWidget.PREFS, MODE_PRIVATE);
+    private void confirmDelete(final Countdown c) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete countdown")
+                .setMessage("Remove \"" + c.title + "\"?")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        store.delete(c.id);
+                        CountdownWidget.updateAll(MainActivity.this);
+                        rebuild();
+                    }
+                })
+                .show();
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 }
