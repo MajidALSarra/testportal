@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Brawl Legends — Sagoory · Hadoosh · Saeedan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ===== MAIN MENU ===== -->
+    <section id="menu" class="screen active">
+      <div class="logo">
+        <h1>BRAWL <span>LEGENDS</span></h1>
+        <p class="tagline">Pick your beast. Rule the arena.</p>
+      </div>
+
+      <div class="brawler-grid" id="brawlerGrid"></div>
+
+      <div class="menu-footer">
+        <button id="playBtn" class="btn btn-play" disabled>SELECT A BRAWLER</button>
+        <button id="howBtn" class="btn btn-ghost">How to play</button>
+      </div>
+    </section>
+
+    <!-- ===== HOW TO PLAY ===== -->
+    <section id="how" class="screen">
+      <div class="panel">
+        <h2>How to Play</h2>
+        <ul class="how-list">
+          <li><b>Move</b> — <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys <span class="muted">(drag left side on mobile)</span></li>
+          <li><b>Aim &amp; Shoot</b> — move the mouse and hold <b>left click</b> <span class="muted">(drag right side on mobile)</span></li>
+          <li><b>SUPER</b> — press <kbd>Space</kbd> or <kbd>Q</kbd> when the bar is full <span class="muted">(tap SUPER button)</span></li>
+          <li>Hide in <b>bushes</b> 🌳 to go invisible. Break <b>crates</b> 📦 for power-ups.</li>
+          <li>Defeat enemy brawlers to charge your SUPER and rack up your score.</li>
+        </ul>
+        <div class="brawler-info" id="howInfo"></div>
+        <button class="btn btn-ghost" id="howBack">Back</button>
+      </div>
+    </section>
+
+    <!-- ===== GAME ===== -->
+    <section id="game" class="screen">
+      <canvas id="canvas"></canvas>
+
+      <!-- HUD -->
+      <div id="hud">
+        <div class="hud-left">
+          <div id="scoreBox">SCORE <span id="score">0</span></div>
+          <div id="killBox">🏆 <span id="kills">0</span></div>
+        </div>
+        <div class="hud-right">
+          <button id="pauseBtn" class="hud-btn">⏸</button>
+        </div>
+      </div>
+
+      <!-- Super button (mobile + desktop) -->
+      <button id="superBtn" class="super-btn locked">
+        <span class="super-ring"></span>
+        <span class="super-label">SUPER</span>
+      </button>
+
+      <!-- Touch joysticks -->
+      <div id="moveStick" class="stick"><div class="knob"></div></div>
+      <div id="aimStick" class="stick"><div class="knob"></div></div>
+    </section>
+
+    <!-- ===== GAME OVER ===== -->
+    <section id="over" class="screen">
+      <div class="panel over-panel">
+        <h2 id="overTitle">Defeated!</h2>
+        <div class="over-stats">
+          <div><span class="big" id="finalScore">0</span><label>Score</label></div>
+          <div><span class="big" id="finalKills">0</span><label>Takedowns</label></div>
+          <div><span class="big" id="finalWave">0</span><label>Best Wave</label></div>
+        </div>
+        <div class="over-buttons">
+          <button class="btn btn-play" id="againBtn">Play Again</button>
+          <button class="btn btn-ghost" id="menuBtn">Change Brawler</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
