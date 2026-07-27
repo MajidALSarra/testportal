@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Full-screen, no action bar. Uses a platform theme so the app needs no
+         AppCompat/AndroidX dependencies. -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@color/brawl_bg</item>
+        <item name="android:statusBarColor">@color/brawl_bg</item>
+        <item name="android:navigationBarColor">@color/brawl_bg</item>
+    </style>
+</resources>

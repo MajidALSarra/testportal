@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.brawllegends.game'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.brawllegends.game"
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Debug-signed by default so `assembleDebug` yields an installable APK
+            // with no keystore setup. Add a real signingConfig before publishing.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The web game lives in ../../www and is bundled as app assets — no copy step,
+    // no duplication. index.html loads style.css/game.js with relative paths, which
+    // WebView resolves fine under file:///android_asset/.
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../www']
+        }
+    }
+}
