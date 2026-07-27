@@ -295,6 +295,7 @@ const input = {
 
 let G = null;   // active game object
 let selected = null;
+let selectedDiff = 'medium';
 let rafId = 0, lastT = 0;
 
 /* ----------------------------------------------------------------------
@@ -354,13 +355,24 @@ function buildLevel() {
 const ROUNDS_TO_WIN = 2;   // best of 3
 const ROUND_TIME = 60;     // seconds per round; on timeout, most HP wins
 
-function startGame(defKey) {
+// Difficulty tuning. `projDmg` overrides every enemy shot's damage (null = use
+// each brawler's own weapon damage). `speedMul` scales enemy movement speed.
+// `superMul` scales enemy SUPER damage. `squad` spawns 2 of each brawler (6 foes).
+const DIFFICULTIES = {
+  easy:       { name: 'Easy',       blurb: 'Slow foes · 50 dmg',        speedMul: 0.55, projDmg: 50,   superMul: 0.35, squad: false },
+  medium:     { name: 'Medium',     blurb: 'Brisker foes · 100 dmg',    speedMul: 0.80, projDmg: 100,  superMul: 0.65, squad: false },
+  hard:       { name: 'Hard',       blurb: 'Normal fight',              speedMul: 1.05, projDmg: null, superMul: 1.00, squad: false },
+  impossible: { name: 'Impossible', blurb: '6 fast foes · 200 dmg',     speedMul: 1.70, projDmg: 200,  superMul: 1.50, squad: true  },
+};
+
+function startGame(defKey, diffKey) {
   const level = buildLevel();
   const types = Object.keys(BRAWLERS);
   const opponentKey = types[(Math.random() * types.length) | 0];  // random duel opponent
   const player = makeBrawler(defKey, WORLD.w/2, WORLD.h - 220, true);
   G = {
     level, player, opponentKey,
+    diffKey: diffKey || 'medium', diff: DIFFICULTIES[diffKey] || DIFFICULTIES.medium,
     enemies: [], projectiles: [], particles: [], pickups: [], floaters: [],
     round: 0, playerWins: 0, enemyWins: 0, roundsToWin: ROUNDS_TO_WIN,
     countdown: 0, roundActive: false, roundEndT: 0, matchOver: false, banner: null,
@@ -375,6 +387,30 @@ function startGame(defKey) {
   rafId = requestAnimationFrame(loop);
 }
 
+// Spawn the round's enemies according to the current difficulty and apply its
+// speed tuning. Returns the list of fresh enemy brawlers.
+function spawnEnemies() {
+  const d = G.diff;
+  const list = [];
+  const add = (type, x, y) => {
+    const e = makeBrawler(type, x, y, false);
+    e.spawnGuard = 1.0; e.facing = Math.PI/2; e.eDmgMul = 1.0;
+    e.speed = BRAWLERS[type].speed * d.speedMul;
+    list.push(e);
+  };
+  if (d.squad) {
+    // 2 of each brawler, spread across the far side.
+    const types = Object.keys(BRAWLERS);           // sagoory, hadoosh, saeedan
+    const xs = [WORLD.w*0.2, WORLD.w*0.4, WORLD.w*0.6, WORLD.w*0.8, WORLD.w*0.3, WORLD.w*0.7];
+    const ys = [200, 200, 200, 200, 360, 360];
+    let i = 0;
+    for (const t of types) { add(t, xs[i], ys[i]); i++; add(t, xs[i], ys[i]); i++; }
+  } else {
+    add(G.opponentKey, WORLD.w/2, 220);
+  }
+  return list;
+}
+
 // Set up a fresh round: reset the arena, both duelists full-health on opposite
 // sides, then a short countdown before the fight begins.
 function startRound() {
@@ -387,9 +423,7 @@ function startRound() {
   p.dashT = 0; p.invT = 0; p.reloadT = 0; p.spawnGuard = 1.0;
   p.facing = -Math.PI/2; p.walk = 0; p.superHitSet = null;
 
-  const e = makeBrawler(G.opponentKey, WORLD.w/2, 220, false);
-  e.spawnGuard = 1.0; e.facing = Math.PI/2; e.eDmgMul = 1.0;
-  G.enemies = [e];
+  G.enemies = spawnEnemies();
 
   G.countdown = 2.2;                   // "ROUND n" intro
   G.roundActive = false;
@@ -416,11 +450,13 @@ function showBanner(text, color) {
   G.banner = { text, color, t: 1.8, max: 1.8 };
 }
 
-// Round timer ran out — award the round to whoever has more health left.
+// Round timer ran out — award the round to the side with more health left.
+// (For the squad, use the enemies' average remaining health.)
 function resolveByTime() {
   const p = G.player;
-  const e = G.enemies.find(x => !x.dead);
-  const pf = p.hp / p.maxHp, ef = e ? e.hp / e.maxHp : 0;
+  const alive = G.enemies.filter(x => !x.dead);
+  const pf = p.hp / p.maxHp;
+  const ef = alive.length ? alive.reduce((s, e) => s + e.hp / e.maxHp, 0) / alive.length : 0;
   resolveRound(pf >= ef ? 'player' : 'enemy');
 }
 
@@ -431,7 +467,7 @@ function endMatch() {
   $('#overTitle').textContent = won ? 'You Win!' : 'You Lost!';
   $('#statYou').textContent = G.playerWins;
   $('#statOpp').textContent = G.enemyWins;
-  $('#statOppName').textContent = BRAWLERS[G.opponentKey].name;
+  $('#statOppName').textContent = G.diff && G.diff.squad ? 'Squad' : BRAWLERS[G.opponentKey].name;
   showScreen('over');
 }
 
@@ -471,6 +507,12 @@ function resolveWalls(ent) {
 ---------------------------------------------------------------------- */
 function fireWeapon(b, angle) {
   const a = b.def.attack;
+  // Enemy damage follows the difficulty: a fixed per-shot value when set,
+  // otherwise the brawler's own weapon damage. The player is never scaled.
+  let dmg = a.dmg;
+  if (!b.isPlayer) {
+    dmg = (G.diff && G.diff.projDmg != null) ? G.diff.projDmg : a.dmg;
+  }
   for (let i = 0; i < a.pellets; i++) {
     const spread = (a.pellets > 1 ? (i/(a.pellets-1) - 0.5) : 0) * a.spread * 2
                    + (a.pellets === 1 ? rand(-a.spread, a.spread) : rand(-0.04,0.04));
@@ -478,7 +520,7 @@ function fireWeapon(b, angle) {
     G.projectiles.push({
       x: b.x + Math.cos(angle)*b.r, y: b.y + Math.sin(angle)*b.r,
       vx: Math.cos(ang)*a.speed, vy: Math.sin(ang)*a.speed,
-      dmg: a.dmg * (b.isPlayer ? 1 : (b.eDmgMul||0.8)),
+      dmg: dmg,
       life: a.life, r: a.style==='shotgun'?7:6, owner: b, color: b.def.color,
       style: a.style, chargeGain: a.chargePerHit,
     });
@@ -491,13 +533,15 @@ function useSuper(b) {
   if (b.super < 100) return;
   const s = b.def.super;
   b.super = 0;
+  // Enemy SUPERs are scaled by difficulty; the player's are always full power.
+  const esm = b.isPlayer ? 1 : (G.diff ? G.diff.superMul : 1);
   if (b.def.superType === 'dash' || b.def.superType === 'charge') {
     const ang = b.facing;
     b.dashVX = Math.cos(ang) * (b.def.superType==='charge'? 15 : 17);
     b.dashVY = Math.sin(ang) * (b.def.superType==='charge'? 15 : 17);
     b.dashT = 0.34;
     b.invT = 0.5;
-    b.superDmg = s.dmg;
+    b.superDmg = s.dmg * esm;
     b.superKnock = s.knock;
     b.superHitSet = new Set();
     if (b.def.superType === 'dash' && s.feathers) {
@@ -506,7 +550,7 @@ function useSuper(b) {
         const fa = ang + (i/(s.feathers-1) - 0.5) * 1.1;
         G.projectiles.push({
           x: b.x, y: b.y, vx: Math.cos(fa)*12, vy: Math.sin(fa)*12,
-          dmg: 260 * (b.isPlayer?1:0.7), life: 40, r: 6, owner: b,
+          dmg: 260 * (b.isPlayer ? 1 : esm), life: 40, r: 6, owner: b,
           color: '#fff2c2', style: 'rapid', chargeGain: 6,
         });
       }
@@ -521,7 +565,7 @@ function useSuper(b) {
     for (const t of targets) {
       if (t.dead) continue;
       if (dist2(t.x,t.y,b.x,b.y) < s.radius*s.radius) {
-        damage(t, s.dmg, b);
+        damage(t, s.dmg * esm, b);
         const ang = Math.atan2(t.y-b.y, t.x-b.x);
         t.x += Math.cos(ang)*s.knock; t.y += Math.sin(ang)*s.knock;
       }
@@ -551,8 +595,11 @@ function killEntity(target, from) {
   for (let i=0;i<22;i++) addParticle(target.x, target.y, target.def.color);
   G.shake = Math.max(G.shake, 10);
   addFloater(target.x, target.y - 20, 'K.O.', '#ff4d8d', 1, 22);
-  // 1v1: a KO ends the round for whoever is still standing.
-  resolveRound(target.isPlayer ? 'enemy' : 'player');
+  if (target.isPlayer) {
+    resolveRound('enemy');                          // player down -> round lost
+  } else if (!G.enemies.some(e => e !== target && !e.dead)) {
+    resolveRound('player');                          // last enemy down -> round won
+  }
 }
 
 function dropPickup(x, y) {
@@ -874,7 +921,10 @@ function render() {
     ctx.strokeText('ROUND ' + G.round, VW/2, VH/2 - 6);
     ctx.fillText('ROUND ' + G.round, VW/2, VH/2 - 6);
     ctx.font = 'bold 22px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#ffcf3f';
-    ctx.fillText(BRAWLERS[G.player.key].name + '  vs  ' + BRAWLERS[G.opponentKey].name, VW/2, VH/2 + 34);
+    const foe = G.diff && G.diff.squad ? 'THE SQUAD (6)' : BRAWLERS[G.opponentKey].name;
+    ctx.fillText(BRAWLERS[G.player.key].name + '  vs  ' + foe, VW/2, VH/2 + 34);
+    ctx.font = 'bold 16px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#b9c0ff';
+    ctx.fillText(G.diff.name.toUpperCase() + ' · ' + G.diff.blurb, VW/2, VH/2 + 62);
   }
 
   // transient banner ("FIGHT!", "ROUND WON!", ...)
@@ -1053,7 +1103,10 @@ function pipStr(n, total) {
 function updateHud() {
   const p = G.player;
   $('#scoreBox').innerHTML = 'YOU <b style="color:#38e08a">' + pipStr(G.playerWins, G.roundsToWin) + '</b>';
-  $('#killBox').innerHTML = '<b style="color:#ff5b5b">' + pipStr(G.enemyWins, G.roundsToWin) + '</b> ' + BRAWLERS[G.opponentKey].name;
+  const oppLabel = G.diff && G.diff.squad
+    ? (G.enemies.filter(e => !e.dead).length + ' foes')
+    : BRAWLERS[G.opponentKey].name;
+  $('#killBox').innerHTML = '<b style="color:#ff5b5b">' + pipStr(G.enemyWins, G.roundsToWin) + '</b> ' + oppLabel;
   const tb = $('#timerBox');
   if (tb) {
     const s = Math.max(0, Math.ceil(G.roundTime || 0));
@@ -1272,12 +1325,33 @@ window.addEventListener('resize', () => { if ($('#game').classList.contains('act
 /* ----------------------------------------------------------------------
    19. Boot
 ---------------------------------------------------------------------- */
+function buildDifficulty() {
+  const wrap = $('#diffSelect');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (const key of Object.keys(DIFFICULTIES)) {
+    const d = DIFFICULTIES[key];
+    const b = document.createElement('button');
+    b.className = 'diff-btn' + (key === selectedDiff ? ' selected' : '');
+    b.dataset.diff = key;
+    b.innerHTML = `<span class="diff-name">${d.name}</span><span class="diff-blurb">${d.blurb}</span>`;
+    b.addEventListener('click', () => selectDifficulty(key));
+    wrap.appendChild(b);
+  }
+}
+function selectDifficulty(key) {
+  selectedDiff = key;
+  document.querySelectorAll('.diff-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.diff === key));
+}
+
 function boot() {
   buildMenu();
+  buildDifficulty();
   animThumbs();
   setupInput();
 
-  $('#playBtn').addEventListener('click', () => { if (selected) startGame(selected); });
+  $('#playBtn').addEventListener('click', () => { if (selected) startGame(selected, selectedDiff); });
   $('#howBtn').addEventListener('click', () => {
     const info = $('#howInfo');
     info.innerHTML = Object.values(BRAWLERS).map(d =>
@@ -1285,7 +1359,7 @@ function boot() {
     showScreen('how');
   });
   $('#howBack').addEventListener('click', () => showScreen('menu'));
-  $('#againBtn').addEventListener('click', () => startGame(selected));
+  $('#againBtn').addEventListener('click', () => startGame(selected, selectedDiff));
   $('#menuBtn').addEventListener('click', () => showScreen('menu'));
 
   showScreen('menu');

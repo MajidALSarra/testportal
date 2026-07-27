@@ -19,10 +19,19 @@ as a native **Android** app.
 - **SUPER** — `Space` / `Q` when charged, or tap the **SUPER** button
 - **Pause** — `P` / `Esc` / the ⏸ button
 
-It's a **1v1 duel** — you versus a single AI opponent, **best of 3 rounds**
-(first to 2 wins). Each round has a 60-second timer; if it runs out, whoever has
-more health left takes the round. Hide in **bushes** 🌳 to go invisible, smash
+It's a **1v1 duel** — you versus an AI opponent, **best of 3 rounds** (first to
+2 wins). Each round has a 60-second timer; if it runs out, whoever has more
+health left takes the round. Hide in **bushes** 🌳 to go invisible, smash
 **crates** 📦 for heal / super power-ups, and deal damage to charge your SUPER.
+
+Choose a **difficulty** on the menu:
+
+| Difficulty | Enemies | Speed | Damage per hit |
+|------------|---------|-------|----------------|
+| **Easy** | 1 | slow | 50 |
+| **Medium** | 1 | brisk | 100 |
+| **Hard** | 1 | normal | each brawler's own |
+| **Impossible** | **6** (2 of each brawler) | very fast | 200 |
 
 ## Play it
 
