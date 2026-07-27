@@ -37,7 +37,7 @@
           <li><b>Aim &amp; Shoot</b> — move the mouse and hold <b>left click</b> <span class="muted">(drag the RIGHT half of the screen on mobile)</span></li>
           <li><b>SUPER</b> — press <kbd>Space</kbd> or <kbd>Q</kbd> when the bar is full <span class="muted">(tap the SUPER button)</span></li>
           <li>Hide in <b>bushes</b> 🌳 to go invisible. Break <b>crates</b> 📦 for power-ups.</li>
-          <li>Defeat enemy brawlers to charge your SUPER and rack up your score.</li>
+          <li><b>1v1 duel</b> — first to win <b>2 rounds</b> takes the match. Deal damage to charge your SUPER.</li>
         </ul>
         <div class="brawler-info" id="howInfo"></div>
         <button class="btn btn-ghost" id="howBack">Back</button>
@@ -51,9 +51,10 @@
       <!-- HUD -->
       <div id="hud">
         <div class="hud-left">
-          <div id="scoreBox">SCORE <span id="score">0</span></div>
-          <div id="killBox">🏆 <span id="kills">0</span></div>
+          <div id="scoreBox">YOU ○○</div>
+          <div id="killBox">○○</div>
         </div>
+        <div id="timerBox">1:00</div>
         <div class="hud-right">
           <button id="pauseBtn" class="hud-btn">⏸</button>
         </div>
@@ -71,9 +72,9 @@
       <div class="panel over-panel">
         <h2 id="overTitle">Defeated!</h2>
         <div class="over-stats">
-          <div><span class="big" id="finalScore">0</span><label>Score</label></div>
-          <div><span class="big" id="finalKills">0</span><label>Takedowns</label></div>
-          <div><span class="big" id="finalWave">0</span><label>Best Wave</label></div>
+          <div><span class="big" id="statYou">0</span><label>Rounds Won</label></div>
+          <div><span class="big" id="statOpp">0</span><label>Rounds Lost</label></div>
+          <div><span class="big" id="statOppName">—</span><label>Opponent</label></div>
         </div>
         <div class="over-buttons">
           <button class="btn btn-play" id="againBtn">Play Again</button>

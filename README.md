@@ -19,9 +19,10 @@ as a native **Android** app.
 - **SUPER** — `Space` / `Q` when charged, or tap the **SUPER** button
 - **Pause** — `P` / `Esc` / the ⏸ button
 
-Hide in **bushes** 🌳 to go invisible, smash **crates** 📦 for heal / super
-power-ups, and survive escalating waves. Every takedown scores 100 points and
-charges your SUPER.
+It's a **1v1 duel** — you versus a single AI opponent, **best of 3 rounds**
+(first to 2 wins). Each round has a 60-second timer; if it runs out, whoever has
+more health left takes the round. Hide in **bushes** 🌳 to go invisible, smash
+**crates** 📦 for heal / super power-ups, and deal damage to charge your SUPER.
 
 ## Play it
 

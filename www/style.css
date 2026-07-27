@@ -143,6 +143,12 @@ kbd {
   letter-spacing: 1px;
 }
 #scoreBox span, #killBox span { color: var(--gold); }
+#timerBox {
+  background: rgba(10,12,31,.7); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 12px; padding: 8px 16px; font-size: 20px; font-weight: bold;
+  letter-spacing: 1px; font-variant-numeric: tabular-nums; align-self: flex-start;
+}
+#timerBox.urgent { color: #ff5b5b; border-color: rgba(255,91,91,.6); animation: pulse 1s infinite; }
 .hud-btn {
   pointer-events: auto;
   background: rgba(10,12,31,.7); border: 1px solid rgba(255,255,255,.15);

@@ -151,6 +151,12 @@ kbd {
   letter-spacing: 1px;
 }
 #scoreBox span, #killBox span { color: var(--gold); }
+#timerBox {
+  background: rgba(10,12,31,.7); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 12px; padding: 8px 16px; font-size: 20px; font-weight: bold;
+  letter-spacing: 1px; font-variant-numeric: tabular-nums; align-self: flex-start;
+}
+#timerBox.urgent { color: #ff5b5b; border-color: rgba(255,91,91,.6); animation: pulse 1s infinite; }
 .hud-btn {
   pointer-events: auto;
   background: rgba(10,12,31,.7); border: 1px solid rgba(255,255,255,.15);
@@ -227,7 +233,7 @@ kbd {
           <li><b>Aim &amp; Shoot</b> — move the mouse and hold <b>left click</b> <span class="muted">(drag the RIGHT half of the screen on mobile)</span></li>
           <li><b>SUPER</b> — press <kbd>Space</kbd> or <kbd>Q</kbd> when the bar is full <span class="muted">(tap the SUPER button)</span></li>
           <li>Hide in <b>bushes</b> 🌳 to go invisible. Break <b>crates</b> 📦 for power-ups.</li>
-          <li>Defeat enemy brawlers to charge your SUPER and rack up your score.</li>
+          <li><b>1v1 duel</b> — first to win <b>2 rounds</b> takes the match. Deal damage to charge your SUPER.</li>
         </ul>
         <div class="brawler-info" id="howInfo"></div>
         <button class="btn btn-ghost" id="howBack">Back</button>
@@ -241,9 +247,10 @@ kbd {
       <!-- HUD -->
       <div id="hud">
         <div class="hud-left">
-          <div id="scoreBox">SCORE <span id="score">0</span></div>
-          <div id="killBox">🏆 <span id="kills">0</span></div>
+          <div id="scoreBox">YOU ○○</div>
+          <div id="killBox">○○</div>
         </div>
+        <div id="timerBox">1:00</div>
         <div class="hud-right">
           <button id="pauseBtn" class="hud-btn">⏸</button>
         </div>
@@ -261,9 +268,9 @@ kbd {
       <div class="panel over-panel">
         <h2 id="overTitle">Defeated!</h2>
         <div class="over-stats">
-          <div><span class="big" id="finalScore">0</span><label>Score</label></div>
-          <div><span class="big" id="finalKills">0</span><label>Takedowns</label></div>
-          <div><span class="big" id="finalWave">0</span><label>Best Wave</label></div>
+          <div><span class="big" id="statYou">0</span><label>Rounds Won</label></div>
+          <div><span class="big" id="statOpp">0</span><label>Rounds Lost</label></div>
+          <div><span class="big" id="statOppName">—</span><label>Opponent</label></div>
         </div>
         <div class="over-buttons">
           <button class="btn btn-play" id="againBtn">Play Again</button>
@@ -626,45 +633,88 @@ function buildLevel() {
 /* ----------------------------------------------------------------------
    6. Start / reset game
 ---------------------------------------------------------------------- */
+const ROUNDS_TO_WIN = 2;   // best of 3
+const ROUND_TIME = 60;     // seconds per round; on timeout, most HP wins
+
 function startGame(defKey) {
   const level = buildLevel();
-  const player = makeBrawler(defKey, WORLD.w/2, WORLD.h - 200, true);
+  const types = Object.keys(BRAWLERS);
+  const opponentKey = types[(Math.random() * types.length) | 0];  // random duel opponent
+  const player = makeBrawler(defKey, WORLD.w/2, WORLD.h - 220, true);
   G = {
-    level, player,
+    level, player, opponentKey,
     enemies: [], projectiles: [], particles: [], pickups: [], floaters: [],
-    score: 0, kills: 0, wave: 0, waveTimer: 0.6, betweenWaves: true,
+    round: 0, playerWins: 0, enemyWins: 0, roundsToWin: ROUNDS_TO_WIN,
+    countdown: 0, roundActive: false, roundEndT: 0, matchOver: false, banner: null,
     paused: false, over: false, shake: 0, time: 0,
   };
   showScreen('game');
-  updateHud();
   resize();
+  startRound();
+  updateHud();
   lastT = performance.now();
   cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(loop);
 }
 
-function spawnWave() {
-  G.wave++;
-  const count = Math.min(2 + G.wave, 6);
-  const types = Object.keys(BRAWLERS);
-  const margin = 140;
-  for (let i = 0; i < count; i++) {
-    let x, y, tries = 0;
-    do {
-      x = rand(margin, WORLD.w - margin);
-      y = rand(margin, WORLD.h - margin);
-      tries++;
-    } while (tries < 30 && (dist2(x,y,G.player.x,G.player.y) < 420*420 || hitsWall(x,y,40)));
-    const t = types[(Math.random()*types.length)|0];
-    const e = makeBrawler(t, x, y, false);
-    // scale enemy strength gently with waves
-    const scale = 1 + (G.wave-1) * 0.12;
-    e.maxHp = Math.round(e.maxHp * clamp(scale, 1, 2.2));
-    e.hp = e.maxHp;
-    e.eDmgMul = clamp(0.5 + G.wave*0.06, 0.5, 1.15);
-    G.enemies.push(e);
-  }
-  addFloater(WORLD.w/2, 140, 'WAVE ' + G.wave, '#ffcf3f', 2.2, 34);
+// Set up a fresh round: reset the arena, both duelists full-health on opposite
+// sides, then a short countdown before the fight begins.
+function startRound() {
+  G.round++;
+  G.level = buildLevel();              // fresh cover/crates each round
+  G.projectiles = []; G.pickups = []; G.particles = [];
+  const p = G.player;
+  p.x = WORLD.w/2; p.y = WORLD.h - 220;
+  p.hp = p.maxHp; p.dead = false; p.super = 0;
+  p.dashT = 0; p.invT = 0; p.reloadT = 0; p.spawnGuard = 1.0;
+  p.facing = -Math.PI/2; p.walk = 0; p.superHitSet = null;
+
+  const e = makeBrawler(G.opponentKey, WORLD.w/2, 220, false);
+  e.spawnGuard = 1.0; e.facing = Math.PI/2; e.eDmgMul = 1.0;
+  G.enemies = [e];
+
+  G.countdown = 2.2;                   // "ROUND n" intro
+  G.roundActive = false;
+  G.roundEndT = 0;
+  G.roundTime = ROUND_TIME;
+  cam.x = clamp(p.x - VW/2, 0, Math.max(0, WORLD.w - VW));
+  cam.y = clamp(p.y - VH/2, 0, Math.max(0, WORLD.h - VH));
+  updateHud();
+}
+
+// Called when one duelist is KO'd. Tallies the round and either sets up the
+// next round or ends the match.
+function resolveRound(winner) {
+  if (!G.roundActive || G.roundEndT > 0) return;   // resolve once
+  G.roundActive = false;
+  if (winner === 'player') { G.playerWins++; showBanner('ROUND WON!', '#38e08a'); }
+  else { G.enemyWins++; showBanner('ROUND LOST', '#ff5b5b'); }
+  if (G.playerWins >= G.roundsToWin || G.enemyWins >= G.roundsToWin) G.matchOver = true;
+  G.roundEndT = 2.2;
+  updateHud();
+}
+
+function showBanner(text, color) {
+  G.banner = { text, color, t: 1.8, max: 1.8 };
+}
+
+// Round timer ran out — award the round to whoever has more health left.
+function resolveByTime() {
+  const p = G.player;
+  const e = G.enemies.find(x => !x.dead);
+  const pf = p.hp / p.maxHp, ef = e ? e.hp / e.maxHp : 0;
+  resolveRound(pf >= ef ? 'player' : 'enemy');
+}
+
+function endMatch() {
+  if (G.over) return;
+  G.over = true;
+  const won = G.playerWins > G.enemyWins;
+  $('#overTitle').textContent = won ? 'You Win!' : 'You Lost!';
+  $('#statYou').textContent = G.playerWins;
+  $('#statOpp').textContent = G.enemyWins;
+  $('#statOppName').textContent = BRAWLERS[G.opponentKey].name;
+  showScreen('over');
 }
 
 /* ----------------------------------------------------------------------
@@ -780,22 +830,11 @@ function damage(target, amount, from) {
 
 function killEntity(target, from) {
   target.dead = true;
-  target.respawnT = target.isPlayer ? 2.2 : 0;
-  for (let i=0;i<18;i++) addParticle(target.x, target.y, target.def.color);
-  G.shake = Math.max(G.shake, 8);
-  if (!target.isPlayer) {
-    G.score += 100;
-    G.kills++;
-    if (from && from.isPlayer) G.player.super = Math.min(100, G.player.super + 35);
-    // chance to drop a pickup
-    if (Math.random() < 0.5) dropPickup(target.x, target.y);
-    // remove after brief death fx handled in update
-    addFloater(target.x, target.y - 20, 'K.O.', '#ff4d8d', 1, 20);
-    updateHud();
-  } else {
-    // player died -> game over
-    endGame();
-  }
+  for (let i=0;i<22;i++) addParticle(target.x, target.y, target.def.color);
+  G.shake = Math.max(G.shake, 10);
+  addFloater(target.x, target.y - 20, 'K.O.', '#ff4d8d', 1, 22);
+  // 1v1: a KO ends the round for whoever is still standing.
+  resolveRound(target.isPlayer ? 'enemy' : 'player');
 }
 
 function dropPickup(x, y) {
@@ -876,21 +915,31 @@ function update(dt) {
   G.time += dt;
   const p = G.player;
 
-  // ---- waves ----
-  if (G.enemies.length === 0 && !G.betweenWaves) {
-    G.betweenWaves = true; G.waveTimer = 2.0;
+  // ---- round flow (1v1 duel) ----
+  if (G.banner && G.banner.t > 0) G.banner.t -= dt;
+  if (G.countdown > 0) {
+    G.countdown -= dt;
+    if (G.countdown <= 0) { G.roundActive = true; showBanner('FIGHT!', '#ffcf3f'); }
   }
-  if (G.betweenWaves) {
-    G.waveTimer -= dt;
-    if (G.waveTimer <= 0) { G.betweenWaves = false; spawnWave(); }
+  if (G.roundEndT > 0) {
+    G.roundEndT -= dt;
+    if (G.roundEndT <= 0) {
+      if (G.matchOver) { endMatch(); return; }
+      startRound();
+      return;
+    }
+  }
+  // Combat only runs during the live phase of a round.
+  const combat = G.roundActive && G.countdown <= 0 && G.roundEndT <= 0 && !G.matchOver;
+
+  // ---- round timer ----
+  if (combat) {
+    G.roundTime -= dt;
+    if (G.roundTime <= 0) { G.roundTime = 0; resolveByTime(); }
   }
 
   // ---- player ----
-  if (!p.dead) {
-    updatePlayer(p, dt);
-  } else {
-    p.respawnT -= dt;
-  }
+  if (!p.dead && combat) updatePlayer(p, dt);
 
   // ---- enemies ----
   for (const e of G.enemies) {
@@ -900,10 +949,12 @@ function update(dt) {
     e.invT -= dt;
     e.spawnGuard -= dt;
     e.blinkT -= dt;
-    if (e.dashT > 0) { updateDash(e); }
-    else updateAI(e, dt);
+    if (combat) {
+      if (e.dashT > 0) updateDash(e);
+      else updateAI(e, dt);
+    }
     e.inBush = inBush(e);
-    e.walk += (e.moving ? dt*6 : 0);
+    e.walk += (e.moving && combat ? dt*6 : 0);
   }
   // cull dead enemies after fx
   G.enemies = G.enemies.filter(e => !e.dead || (e.deadT = (e.deadT||0)+dt) < 0.05);
@@ -1095,6 +1146,32 @@ function render() {
   // touch joysticks (screen space, above the world)
   drawJoysticks();
 
+  // round intro overlay ("ROUND n" + matchup)
+  if (G.countdown > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.fillRect(0,0,VW,VH);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,.55)';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 56px "Trebuchet MS", sans-serif';
+    ctx.strokeText('ROUND ' + G.round, VW/2, VH/2 - 6);
+    ctx.fillText('ROUND ' + G.round, VW/2, VH/2 - 6);
+    ctx.font = 'bold 22px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#ffcf3f';
+    ctx.fillText(BRAWLERS[G.player.key].name + '  vs  ' + BRAWLERS[G.opponentKey].name, VW/2, VH/2 + 34);
+  }
+
+  // transient banner ("FIGHT!", "ROUND WON!", ...)
+  if (G.banner && G.banner.t > 0) {
+    const a = clamp(G.banner.t / G.banner.max, 0, 1);
+    ctx.globalAlpha = Math.min(1, a * 1.6);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 52px "Trebuchet MS", sans-serif';
+    ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.55)';
+    ctx.strokeText(G.banner.text, VW/2, VH * 0.32);
+    ctx.fillStyle = G.banner.color;
+    ctx.fillText(G.banner.text, VW/2, VH * 0.32);
+    ctx.globalAlpha = 1;
+  }
+
   // respawn overlay
   if (G.player.dead && !G.over) {
     ctx.fillStyle = 'rgba(0,0,0,.4)';
@@ -1250,10 +1327,21 @@ function drawHealthBar(e) {
    13. HUD
 ---------------------------------------------------------------------- */
 const superBtn = $('#superBtn');
+function pipStr(n, total) {
+  let s = '';
+  for (let i = 0; i < total; i++) s += i < n ? '●' : '○';
+  return s;
+}
 function updateHud() {
-  $('#score').textContent = G.score;
-  $('#kills').textContent = G.kills;
   const p = G.player;
+  $('#scoreBox').innerHTML = 'YOU <b style="color:#38e08a">' + pipStr(G.playerWins, G.roundsToWin) + '</b>';
+  $('#killBox').innerHTML = '<b style="color:#ff5b5b">' + pipStr(G.enemyWins, G.roundsToWin) + '</b> ' + BRAWLERS[G.opponentKey].name;
+  const tb = $('#timerBox');
+  if (tb) {
+    const s = Math.max(0, Math.ceil(G.roundTime || 0));
+    tb.textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2, '0');
+    tb.classList.toggle('urgent', s <= 10 && G.roundActive);
+  }
   const ch = clamp(p.super,0,100);
   superBtn.style.setProperty('--charge', ch + '%');
   if (ch >= 100) { superBtn.classList.remove('locked'); superBtn.classList.add('ready'); }
@@ -1273,17 +1361,7 @@ function loop(t) {
 /* ----------------------------------------------------------------------
    15. Game over
 ---------------------------------------------------------------------- */
-function endGame() {
-  if (G.over) return;
-  G.over = true;
-  setTimeout(() => {
-    $('#finalScore').textContent = G.score;
-    $('#finalKills').textContent = G.kills;
-    $('#finalWave').textContent = G.wave;
-    $('#overTitle').textContent = ['Defeated!','So close!','Good run!'][ (G.wave>4?2:G.wave>2?1:0) ];
-    showScreen('over');
-  }, 700);
-}
+// (Match end is handled by endMatch(), defined near startRound.)
 
 /* ----------------------------------------------------------------------
    16. Screens / menu wiring
