@@ -3,6 +3,11 @@
 Creates a Windows VM in Azure with a **static public IP** and **RDP (port 3389)
 open to the internet**, so you can connect from any device, anywhere.
 
+> **Working on the live machine?** See [`AGENT-HANDOFF.md`](AGENT-HANDOFF.md) for
+> the current state of the deployed cloud PC, access methods, decisions already
+> made, and open items. The live machine has since moved to Azure Bastion and no
+> longer matches this template exactly.
+
 ## What gets created
 
 | Resource | Details |
