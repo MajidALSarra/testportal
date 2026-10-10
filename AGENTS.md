@@ -87,8 +87,10 @@ instead of doing it.
 
 ## 6. Working with peer sessions (tool cheat sheet)
 
-These tools come from the `claude-code-remote` MCP server and are available
-in every cloud session on this account.
+These tools come from the `claude-code-remote` MCP server that claude.ai
+attaches to every **cloud** session (one started from claude.ai/code, the
+mobile app, the desktop app, or `claude --cloud`). They are not in the public
+Claude Code docs; a terminal session has different equivalents (section 7).
 
 | Need | Tool | Notes |
 |---|---|---|
@@ -122,29 +124,54 @@ and set `source_url` to that repo. The peer still needs the manual, so add:
 "The agent manual is at https://github.com/MajidALSarra/testportal/blob/<branch>/AGENTS.md;
 fetch it with `add_repo` MajidALSarra/testportal and read it before starting."
 
+### Starting a role in your terminal
+
+The same role briefs work for local Claude Code sessions:
+
+| Need | Command |
+|---|---|
+| Run a whole terminal session as a role | `claude --agent reviewer` (or put `"agent": "reviewer"` in `.claude/settings.json`) |
+| Start a cloud session from the terminal | `claude --cloud "<kickoff prompt>"` |
+| Send a follow-up into a cloud session | `claude -p "<message>" --cloud <session id>` |
+| Name a local session so peers can find it | `claude --name "reviewer: PR 42"` or `/rename` inside it |
+| List and message other local sessions | `ListAgents` and `SendMessage` tools (Claude Code 2.1.224 or newer) |
+| Several teammates inside one terminal | set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and describe the team in plain language (experimental) |
+
+A local session can message cloud sessions only when it is signed in to
+claude.ai with Remote Control on; otherwise local sessions see only each
+other on the same machine.
+
 ## 8. Channels: Slack, email, schedules
 
-**Slack from a session.** The Slack connector (`slack_send_message`,
-`slack_read_thread`, channel search) is in the claude.ai connector directory
-but is not connected on this account yet. Connect it once at
+**Session to Slack.** The Slack connector in the claude.ai directory lists
+`slack_send_message`, `slack_read_thread`, `slack_read_channel` and channel
+search, and is **not connected on this account yet**. Connect it once at
 claude.ai → Settings → Connectors → Slack, then enable it in a session's
 connector settings. After that any role can post its `done` and `blocked`
-messages to a channel such as `#folderbird-agents` in addition to messaging
-the coordinator.
+messages to a channel such as `#folderbird-agents` as well as to the
+coordinator, and a Routine can carry the connector too.
 
-**Slack to a session.** Claude in Slack lets you @mention Claude in a Slack
-thread to start or steer a Claude Code session and get replies in that
-thread. Installation details are in the Claude Code docs; see the setup note
-in section 9.
+**Slack to a session.** Two products do this; which one applies depends on
+the plan:
+
+- *Claude in Slack* (Pro and Max, per user): @mention Claude in a channel and
+  a cloud session starts; replies in the thread continue it. Docs:
+  https://code.claude.com/docs/en/slack
+- *Claude Tag* (Team and Enterprise, organisation-wide): an owner sets it up
+  at claude.ai/admin-settings/claude-tag, invites the Claude app to a channel,
+  and every thread becomes its own session. Docs:
+  https://claude.com/docs/claude-tag/overview
 
 **Email.** Gmail is already connected. A `release` or `coordinator` session
 can mail a digest when a long job finishes.
 
-**Schedules.** `create_trigger` makes a Routine: a cron-fired session. The
-useful one here is a daily stand-up: a fresh session that calls
-`list_sessions`, summarises every running or blocked session, and posts the
-digest to Slack or email. Create it from a coordinator session when you want
-it; it spends tokens on every run.
+**Schedules (Routines).** A Routine is a saved prompt that runs as a fresh
+cloud session on a cron schedule (hourly at most), on an HTTP call, or on a
+GitHub event. Create one from a session with `create_trigger`, with
+`/schedule`, or at claude.ai/code/routines. The useful one here is a daily
+stand-up: a session that calls `list_sessions`, summarises every running or
+blocked session, and posts the digest to Slack or email. It spends tokens on
+every run, so create it deliberately.
 
 ## 9. Rules that do not bend
 
@@ -154,3 +181,13 @@ it; it spends tokens on every run.
   human or that session's coordinator asked for it.
 - Report outcomes faithfully: a failed check is reported as failed.
 - Do not paste secrets or tokens into messages between sessions.
+
+## 10. References (verified 2026-10-10)
+
+- Subagents and `--agent`: https://code.claude.com/docs/en/sub-agents
+- Cross-session messaging: https://code.claude.com/docs/en/cross-session-messaging
+- Agent teams: https://code.claude.com/docs/en/agent-teams
+- Cloud sessions: https://code.claude.com/docs/en/claude-code-on-the-web
+- Routines: https://code.claude.com/docs/en/routines
+- Sessions, naming, resume, fork: https://code.claude.com/docs/en/sessions
+- Agent SDK (build your own harness): https://code.claude.com/docs/en/agent-sdk/overview
