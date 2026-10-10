@@ -23,7 +23,9 @@ hours, or a different repo.
 ## 2. Roles
 
 One session plays one role. The role brief lives in `.claude/agents/<role>.md`
-and is the same text whether the role runs as a subagent or as a peer session.
+and is used both ways: as a subagent definition for the `Agent` tool and as
+the brief a peer session reads. The difference is in section 3: a subagent
+shares its parent's session and skips the session-level steps.
 
 | Role | Owns | Repos |
 |---|---|---|
@@ -40,6 +42,12 @@ from any session.
 
 ## 3. Startup checklist (every session, in this order)
 
+**If you are a subagent** (started with the `Agent` tool inside another
+session) you share your parent's session id and title, so skip steps 1 to 5
+and 7: do the task and return your report to the caller.
+
+**If you are a peer session** (your own tab, container and branch):
+
 1. **Know yourself.** Call `get_session` with no id. Note your session id.
 2. **Take a role.** Your kickoff prompt names it. If it does not, you are
    `coordinator` when the human is talking to you directly, otherwise ask.
@@ -51,7 +59,11 @@ from any session.
    with `coordinator:`. If there is none, you are on your own: report to the
    human in chat.
 5. **Announce.** Send the coordinator an `online` message (format in section 4).
-6. **Work on your own branch.** Never push to a branch another session owns.
+6. **Work on your own branch.** The branch you were cloned from is the
+   base, not yours: before the first commit run
+   `git checkout -b <role>/<short-task>` and push only to that branch. Say
+   its name in your `online` message. Never push to a branch another
+   session owns.
 7. **Report.** Send `progress` at milestones, `done` or `blocked` at the end.
    A silent session is a lost session.
 
@@ -95,7 +107,7 @@ Claude Code docs; a terminal session has different equivalents (section 7).
 | Need | Tool | Notes |
 |---|---|---|
 | Who is running | `list_sessions` | Titles follow `<role>: <task>` |
-| Start a peer | `create_session` | `source_url` = repo to clone, `source_revision` = branch, `title` = `<role>: <task>`, `prompt` = kickoff prompt (section 7). Omit `environment_id` to reuse this environment. |
+| Start a peer | `create_session` | `source_url` = repo to clone, `source_revision` = the **base** branch the peer starts from (it creates its own), `title` = `<role>: <task>`, `prompt` = kickoff prompt (section 7). Omit `environment_id` to reuse this environment. |
 | Talk to a peer | `send_message` | `session_id` + the message from section 4 |
 | Read what a peer did | `list_events` | Pass `kinds: ["user","assistant","result"]` and `limit: 100` to skip noise |
 | Stop a peer mid-turn | `interrupt_session` | Then `send_message` the correction |
@@ -113,16 +125,26 @@ Starting a role as a new session takes one paragraph. Replace the angle
 brackets.
 
 ```
-You are the <role> agent for Folderbird. Read AGENTS.md in this repo and
-follow its startup checklist. Your coordinator is <coordinator session id>;
-announce yourself to it first. Task: <what to do>. Work on branch <branch>
-in <repo>. Report done or blocked to the coordinator, then stop.
+You are the <role> agent for Folderbird. Read AGENTS.md and
+.claude/agents/<role>.md in this repo and follow the startup checklist.
+Your coordinator is <coordinator session id>; announce yourself to it first.
+Task: <what to do>. Start from branch <base branch> in <repo>, create your
+own branch <role>/<short-task>, and push only to it. Report done or blocked
+to the coordinator, then stop.
 ```
 
 For a session on another repo, send the same prompt with `create_session`
-and set `source_url` to that repo. The peer still needs the manual, so add:
-"The agent manual is at https://github.com/MajidALSarra/testportal/blob/<branch>/AGENTS.md;
-fetch it with `add_repo` MajidALSarra/testportal and read it before starting."
+and set `source_url` to that repo. The peer still needs the manual and its
+brief, which live only in testportal, so add this sentence to the prompt:
+
+"Before starting, run `add_repo` for MajidALSarra/testportal, then read
+AGENTS.md and .claude/agents/<role>.md from it."
+
+`add_repo` clones testportal's default branch, so the manual has to be on
+that branch for this to work. Until the branch that introduced the manual
+(`ccr-7c9a50bf-2n2cnk`) is merged into the default branch, tell the peer to
+`git fetch origin ccr-7c9a50bf-2n2cnk` in that clone and read the files from
+there, or paste the brief into the prompt.
 
 ### Starting a role in your terminal
 
