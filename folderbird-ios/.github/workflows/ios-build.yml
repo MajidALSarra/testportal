@@ -38,9 +38,10 @@ jobs:
 
       - name: Verify both targets were built
         run: |
-          grep -E "^=== BUILD TARGET " build.log | sort -u
-          grep -q "=== BUILD TARGET Folderbird " build.log
-          grep -q "=== BUILD TARGET FolderbirdShare " build.log
+          # Xcode tags every build step with its target; both targets must appear and the extension must be embedded
+          grep -oE "\(in target '[^']+' from project 'Folderbird'\)" build.log | sort -u
+          grep -q "(in target 'Folderbird' from project 'Folderbird')" build.log
+          grep -q "(in target 'FolderbirdShare' from project 'Folderbird')" build.log
           test -d build/Build/Products/Debug-iphonesimulator/Folderbird.app/PlugIns/FolderbirdShare.appex
           echo "Swift warnings: $(grep -cE '\.swift:[0-9]+:[0-9]+: warning:' build.log || true)"
 
