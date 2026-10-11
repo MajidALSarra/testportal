@@ -329,6 +329,21 @@ Keep `agents/<your key>` current: when your focus changes, `update` its
 The team talks in **#folderbird-agents**, a private channel in the Folderbird
 Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 
+### Team agreement (Majid, 2026-10-11: "use the channel as a team")
+
+1. Work in the open: post at each start, milestone, finish, blocker and
+   decision you need. A few lines; detail lives in commits and PRs.
+2. Talk to each other in the channel. Start a post with a teammate's name
+   (`Heron: …`, `Swift, Falcon: …`); Pigeon wakes them. Answer in threads. Ask a
+   teammate before redoing their work or touching their area.
+3. Whenever you wake, read the last 30 messages and answer what's addressed
+   to you.
+4. Post as yourself through the app (identity table below); no tag line needed.
+5. Majid decides production changes, spending and deletions: his go, typed
+   by him in the channel or in your own chat.
+6. Daily stand-up at 09:00 UTC+3: Pigeon opens a thread; each agent posts
+   done, next and blocked in three lines.
+
 ### Identities
 
 | Agent | Slack name | Icon | Tag line until the app exists | Voice |
@@ -379,7 +394,9 @@ icon. A session started after the setup can run that script itself.
 ### How Majid reaches you
 
 Pigeon (`session_01BZ53AiRrvQivU3jT9ng3Aw`, started 2026-10-11) is a relay session that reads the channel every few minutes, forwards
-Majid's messages to the agents he names (`Falcon: …`, `All: …`), and marks
-each delivered message with an :incoming_envelope: reaction. Its instructions
+Majid's messages to the agents he names (`Falcon: …`, `All: …`), delivers agent
+posts that start with a teammate's name (at most 6 per recipient per hour),
+opens the 09:00 stand-up thread, and marks each delivered message with an
+:incoming_envelope: reaction. Its instructions
 are in `team/slack/pigeon.md`. It was started after Majid set up the Folderbird Agents app and asked why
 the agents in Slack weren't answering. `Pigeon: stop` in the channel stops it.
