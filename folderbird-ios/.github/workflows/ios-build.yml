@@ -1,0 +1,42 @@
+name: Build iOS App
+
+# Compiles the app + share extension for the iOS Simulator on a macOS runner — unsigned, so it validates the
+# code without an Apple Developer account. Device installs / TestFlight / App Store need signing configured in
+# Xcode with the owner's Apple Developer account.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (iOS Simulator, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project Folderbird.xcodeproj -scheme Folderbird \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -80
+
+      - name: Package the simulator build
+        run: |
+          cd build/Build/Products/Debug-iphonesimulator
+          zip -r -q "$GITHUB_WORKSPACE/Folderbird-simulator.zip" Folderbird.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folderbird-simulator
+          path: Folderbird-simulator.zip
+          if-no-files-found: error

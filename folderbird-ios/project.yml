@@ -1,0 +1,127 @@
+# XcodeGen spec — `xcodegen generate` (or ./bootstrap.sh) produces Folderbird.xcodeproj, which is not committed.
+# Two targets: the app and the share extension ("Folderbird" in every app's share sheet). They share the Shared/ sources,
+# an App Group for settings and a keychain access group for the API key.
+name: Folderbird
+options:
+  bundleIdPrefix: com.folderbird
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    # Set your Apple Developer team here or in Xcode → Signing & Capabilities (both targets).
+    DEVELOPMENT_TEAM: ""
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+
+targets:
+  Folderbird:
+    type: application
+    platform: iOS
+    sources:
+      - path: Folderbird
+      - path: Shared
+    dependencies:
+      - target: FolderbirdShare
+        embed: true
+    entitlements:
+      path: Folderbird/Folderbird.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.folderbird.companion
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.folderbird.companion
+    info:
+      path: Folderbird/Info.plist
+      properties:
+        CFBundleDisplayName: Folderbird
+        CFBundleName: Folderbird
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Read back at runtime by Keychain.swift to build the shared keychain group "<TeamID>.com.folderbird.companion".
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        UILaunchScreen: {}
+        # iPad: several Folderbird windows side by side (Split View / Stage Manager).
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # "Save to this device" writes into Documents/, which the Files app then shows as On My iPad › Folderbird.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+        # "Sign in with Folderbird" redirect target (folderbird://auth) — the value the server allowlists.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.folderbird.companion.auth
+            CFBundleURLSchemes: [folderbird]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folderbird.companion
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  FolderbirdShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: Shared
+    entitlements:
+      path: ShareExtension/FolderbirdShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.folderbird.companion
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.folderbird.companion
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Folderbird
+        CFBundleName: FolderbirdShare
+        # An extension's version must match its containing app's.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AppIdentifierPrefix: $(AppIdentifierPrefix)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # Any file, image, movie, text or link — one item or a multi-selection (Photos, Files, Mail, …).
+            NSExtensionActivationRule: 'SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.data" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url").@count >= 1).@count >= 1'
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folderbird.companion.share
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+
+schemes:
+  Folderbird:
+    build:
+      targets:
+        Folderbird: all
+    run:
+      config: Debug
+    archive:
+      config: Release
