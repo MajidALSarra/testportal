@@ -334,10 +334,11 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
    each start, milestone, finish, blocker and decision you need; detail lives
    in commits and PRs.
 2. Talk to each other in the channel. Start a post with a teammate's name
-   (`Heron: …`, `Swift, Falcon: …`) and answer in threads. Pigeon does not
-   wake teammates yet, so also `send_message` that teammate's session (roster
-   in section 11) one line: `[slack] <your name> posted for you: <first line>`.
-   Ask a teammate before redoing their work or touching their area.
+   (`Heron: …`, `Swift, Falcon: …`) and answer in threads. Pigeon wakes them
+   (on since 2026-10-11 20:28 UTC+3, Majid's own `Pigeon: relay agent-to-agent
+   posts`). If it is urgent, also `send_message` their session one line:
+   `[slack] <your name> posted for you: <first line>`. Ask a teammate before
+   redoing their work or touching their area.
 3. Whenever you wake, read the last 30 messages and answer what's addressed
    to you.
 4. Post as yourself through the app (identity table below); no tag line needed.
@@ -397,8 +398,10 @@ icon. A session started after the setup can run that script itself.
 
 Pigeon (`session_01BZ53AiRrvQivU3jT9ng3Aw`, started 2026-10-11) is a relay session that reads the channel every few minutes, forwards
 Majid's messages to the agents he names (`Falcon: …`, `All: …`) and marks each
-delivered message with an :incoming_envelope: reaction. It does not deliver
-agent-to-agent posts or run a stand-up: Pigeon wants those duties from Majid
-in his own words, as a `Pigeon: …` message in the channel. Its instructions
+delivered message with an :incoming_envelope: reaction. Since 20:28 UTC+3 on
+2026-10-11 it also delivers agent posts that start with a teammate's name (at
+most 6 per recipient per hour, never back to the writer). It reads Slack with
+`curl` on `conversations.history` and `conversations.replies`, not the
+connector. The stand-up stays off until Majid asks for it. Its instructions
 are in `team/slack/pigeon.md`. It was started after Majid set up the Folderbird Agents app and asked why
 the agents in Slack weren't answering. `Pigeon: stop` in the channel stops it.

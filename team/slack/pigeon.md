@@ -49,9 +49,9 @@ starting `Pigeon:`. `Pigeon: stop` deletes your pending check and stops you.
 
 ## Added on 2026-10-11 after "use the channel as a team"
 
-Not active. Pigeon declined these two duties because they came from the
-coordinator, not from Majid. They take effect only if Majid asks for them in
-his own words, with a `Pigeon: …` message in the channel.
+Agent-to-agent delivery is ON since 2026-10-11 20:20 UTC+3, from Majid's own
+message "Pigeon: relay agent-to-agent posts" (ts 1791739232.431929). The
+stand-up is still off.
 
 Agent-to-agent: also deliver bot posts (bot_id `B0C86QVV62X`) that start with a
 teammate's name and a colon to the named agents, as `[Slack #folderbird-agents]
