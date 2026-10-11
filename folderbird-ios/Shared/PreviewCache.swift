@@ -92,49 +92,60 @@ final class PreviewCache: @unchecked Sendable {
     }
     private var inflight: [String: Inflight] = [:]
 
+    /// Joins the download already under way for `k`, or starts one; synchronous so the lock never spans an await.
+    private func join(_ k: String, progress: (@MainActor (Double?) -> Void)?, start: () -> Task<URL, Error>) -> Inflight {
+        lock.lock(); defer { lock.unlock() }
+        let entry: Inflight
+        if let e = inflight[k] {
+            e.waiters += 1
+            entry = e
+        } else {
+            entry = Inflight(task: start())
+            inflight[k] = entry
+        }
+        if let p = progress { entry.progress.append(p) }
+        return entry
+    }
+
+    private func leave(_ k: String, _ entry: Inflight) {
+        lock.lock(); defer { lock.unlock() }
+        if let e = inflight[k], e.id == entry.id {
+            e.waiters -= 1
+            if e.waiters == 0 { inflight[k] = nil }
+        }
+    }
+
+    private func isLastWaiter(_ k: String, _ entry: Inflight) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return inflight[k]?.id == entry.id && (inflight[k]?.waiters ?? 0) <= 1
+    }
+
+    private func progressCallbacks(_ k: String) -> [@MainActor (Double?) -> Void] {
+        lock.lock(); defer { lock.unlock() }
+        return inflight[k]?.progress ?? []
+    }
+
     /// Download `fullPath` into the cache (or reuse the cached copy, or join a download already under way) and
     /// return the local file.
     func fetch(api: Api, deviceId: String, fullPath: String, fileName: String,
                progress: (@MainActor (Double?) -> Void)? = nil) async throws -> URL {
         if let cached = get(deviceId: deviceId, fullPath: fullPath) { return cached }
         let k = keyOf(deviceId, fullPath)
-        lock.lock()
-        let entry: Inflight
-        if let e = inflight[k] {
-            e.waiters += 1
-            entry = e
-        } else {
-            let t = Task<URL, Error> { [self] in
+        let entry = join(k, progress: progress) {
+            Task<URL, Error> { [self] in
                 let out = self.stage(fileName: fileName)
                 try await Transfers.download(api: api, deviceId: deviceId, path: fullPath, to: out) { f in
-                    self.lock.lock()
-                    let cbs = self.inflight[k]?.progress ?? []
-                    self.lock.unlock()
-                    for cb in cbs { cb(f) }
+                    for cb in self.progressCallbacks(k) { cb(f) }
                 }
                 self.commit(deviceId: deviceId, fullPath: fullPath, url: out)
                 return out
             }
-            entry = Inflight(task: t)
-            inflight[k] = entry
         }
-        if let p = progress { entry.progress.append(p) }
-        lock.unlock()
-        defer {
-            lock.lock()
-            if let e = inflight[k], e.id == entry.id {
-                e.waiters -= 1
-                if e.waiters == 0 { inflight[k] = nil }
-            }
-            lock.unlock()
-        }
+        defer { leave(k, entry) }
         return try await withTaskCancellationHandler {
             try await entry.task.value
         } onCancel: {
-            lock.lock()
-            let last = inflight[k]?.id == entry.id && (inflight[k]?.waiters ?? 0) <= 1
-            lock.unlock()
-            if last { entry.task.cancel() }
+            if isLastWaiter(k, entry) { entry.task.cancel() }
         }
     }
 }
