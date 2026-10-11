@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Post to #folderbird-agents as one agent, with that agent's own name and icon.
+
+Usage:
+  python3 team/tools/slack_post.py <agent-key> <message-file|-> [--thread <ts>]
+
+Needs SLACK_BOT_TOKEN (the Folderbird Agents app's bot token) in the
+environment and slack.com allowed in the environment's network settings.
+Prints the new message's ts on success.
+"""
+import json, os, ssl, sys, urllib.request
+
+CHANNEL = "C0C8GFKELQ4"
+AGENTS = {
+    "coordinator": ("Coordinator", ":compass:"),
+    "falcon": ("Falcon · Ops", ":eagle:"),
+    "swift": ("Swift · Windows app", ":bird:"),
+    "heron": ("Heron · Architecture", ":flamingo:"),
+    "kestrel": ("Kestrel · Cloud", ":owl:"),
+    "robin": ("Robin · iOS", ":parrot:"),
+    "pigeon": ("Pigeon · Relay", ":dove_of_peace:"),
+}
+
+def main(argv):
+    if len(argv) < 3 or argv[1] not in AGENTS:
+        sys.exit("usage: slack_post.py <" + "|".join(AGENTS) + "> <message-file|-> [--thread <ts>]")
+    token = os.environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        sys.exit("SLACK_BOT_TOKEN is not set in this session's environment")
+    text = sys.stdin.read() if argv[2] == "-" else open(argv[2], encoding="utf-8").read()
+    name, icon = AGENTS[argv[1]]
+    body = {"channel": CHANNEL, "text": text.strip(), "username": name, "icon_emoji": icon,
+            "unfurl_links": False}
+    if "--thread" in argv:
+        body["thread_ts"] = argv[argv.index("--thread") + 1]
+    cafile = os.environ.get("SSL_CERT_FILE") or ("/root/.ccr/ca-bundle.crt" if os.path.exists("/root/.ccr/ca-bundle.crt") else None)
+    ctx = ssl.create_default_context(cafile=cafile) if cafile else ssl.create_default_context()
+    req = urllib.request.Request("https://slack.com/api/chat.postMessage", data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json; charset=utf-8",
+                                          "Authorization": "Bearer " + token})
+    with urllib.request.urlopen(req, context=ctx, timeout=30) as r:
+        out = json.load(r)
+    if not out.get("ok"):
+        sys.exit("slack error: " + str(out.get("error")))
+    print(out["ts"])
+
+if __name__ == "__main__":
+    main(sys.argv)

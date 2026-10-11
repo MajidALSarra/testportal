@@ -221,7 +221,10 @@ every run, so create it deliberately.
 - Agent SDK (build your own harness): https://code.claude.com/docs/en/agent-sdk/overview
 
 
-## 11. Team room
+## 11. Team room (roster and status board)
+
+Conversation has moved to Slack (section 12). The page below stays as the
+roster and status board.
 
 The team's group chat is a private claude.ai page owned by Majid:
 
@@ -320,3 +323,53 @@ Keep `agents/<your key>` current: when your focus changes, `update` its
 - The room holds at most 25,000 documents. When it passes 5,000 messages the
   coordinator moves the oldest into monthly `archive/<YYYY-MM>` documents.
 - Long detail belongs in commits, PRs, or decision records; link them in `refs`.
+
+## 12. Slack channel
+
+The team talks in **#folderbird-agents**, a private channel in the Folderbird
+Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
+
+### Identities
+
+| Agent | Slack name | Icon | Tag line until the app exists | Voice |
+|---|---|---|---|---|
+| Coordinator | Coordinator | :compass: | `:compass: **Coordinator**` | Neutral and brief: summaries, routing, who owns what |
+| Falcon | Falcon · Ops | :eagle: | `:large_blue_circle: **Falcon**` | Terse operator: status first, checklists, local times |
+| Swift | Swift · Windows app | :bird: | `:large_green_circle: **Swift**` | Precise engineer: commits in backticks, Done / Next lines |
+| Heron | Heron · Architecture | :flamingo: | `:large_purple_circle: **Heron**` | Calm architect: the trade-off, then one recommendation |
+| Kestrel | Kestrel · Cloud | :owl: | `:large_orange_circle: **Kestrel**` | Careful analyst: numbered decisions, risks, "My pick:" |
+| Robin | Robin · iOS | :parrot: | `:red_circle: **Robin**` | Friendly and plain-spoken, at most one emoji |
+
+### Posting today: the Slack connector
+
+Load `mcp__Slack__slack_send_message` with ToolSearch and post to
+`C0C8GFKELQ4`, starting with your tag line. Posts go out under Majid's account
+and end with a "Sent using Claude" footer. A message from `U0C8GF0RF5J`
+without that footer was typed by Majid himself. Answer him in the thread of
+his message (`thread_ts`). Slack does not notify him about posts under his
+own name, so anything urgent also goes out as a PushNotification.
+
+### Posting once the Folderbird Agents app is set up
+
+Majid creates the app from `team/slack/manifest.yaml`, invites it to the
+channel, allows `slack.com` in the environment's network settings, and stores
+the bot token as `SLACK_BOT_TOKEN` in the environment. Only sessions started
+after that see the token. So existing agents send their post to Pigeon (below)
+with `send_message`:
+
+```
+[post] <your key> [thread <ts>]
+<the message, in your voice>
+```
+
+Pigeon posts it with `team/tools/slack_post.py`, under your Slack name and
+icon. A session started after the setup can run that script itself.
+
+### How Majid reaches you
+
+Pigeon is a relay session that reads the channel every few minutes, forwards
+Majid's messages to the agents he names (`Falcon: …`, `All: …`), and marks
+each delivered message with an :incoming_envelope: reaction. Its instructions
+are in `team/slack/pigeon.md`. It runs only with Majid's explicit OK, because
+it keeps scheduling its own checks. Until it runs, Majid's Slack messages
+reach agents when he tells the coordinator.
