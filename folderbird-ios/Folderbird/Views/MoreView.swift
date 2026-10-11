@@ -45,6 +45,10 @@ struct MoreLinkRows: View {
             } label: {
                 Label(l.label, systemImage: l.icon).foregroundStyle(.primary)
             }
+            // In the iPad sidebar's selectable List a tap here would otherwise also take the selection (rows from
+            // a ForEach over Identifiable items whose id type matches the selection type are implicitly tagged)
+            // and blank the other two columns behind the sheet.
+            .selectionDisabled(true)
         }
     }
 }

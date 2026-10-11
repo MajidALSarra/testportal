@@ -8,7 +8,7 @@ import Foundation
 /// Holds ONE entry, and the key lives in memory only: after the process restarts nothing is reused, so a file
 /// that changed on the PC meanwhile can never be served from a stale copy. `clear()` drops it when we
 /// ourselves change the file on the PC (a text edit, an upload over the same name) or on an explicit refresh.
-final class PreviewCache {
+final class PreviewCache: @unchecked Sendable {
     static let shared = PreviewCache()
 
     /// Long enough for look-then-keep, short enough that a file edited on the PC can't be served from here for long.
@@ -54,7 +54,10 @@ final class PreviewCache {
     func commit(deviceId: String, fullPath: String, url: URL) {
         lock.lock(); defer { lock.unlock() }
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
-        if size > 0 { key = keyOf(deviceId, fullPath); file = url; at = Date() }
+        guard size > 0 else { return }
+        // One entry: a previous copy (another file, or an older fetch of this one) goes with its directory.
+        if let f = file, f != url { try? FileManager.default.removeItem(at: f.deletingLastPathComponent()) }
+        key = keyOf(deviceId, fullPath); file = url; at = Date()
     }
 
     /// Our copy of this exact file, or nil if we don't have a fresh one.
@@ -77,13 +80,61 @@ final class PreviewCache {
         key = nil; file = nil; at = .distantPast
     }
 
-    /// Download `fullPath` into the cache (or reuse the cached copy) and return the local file.
+    /// A download in progress, shared by everyone who asks for the same file meanwhile (the preview and then
+    /// Open / Save / Edit, say), so the bytes cross the wire once instead of once per caller. Progress fans out
+    /// to every waiter; the download is cancelled only when the last waiter cancels.
+    private final class Inflight: @unchecked Sendable {
+        let id = UUID()
+        let task: Task<URL, Error>
+        var waiters = 1
+        var progress: [@MainActor (Double?) -> Void] = []
+        init(task: Task<URL, Error>) { self.task = task }
+    }
+    private var inflight: [String: Inflight] = [:]
+
+    /// Download `fullPath` into the cache (or reuse the cached copy, or join a download already under way) and
+    /// return the local file.
     func fetch(api: Api, deviceId: String, fullPath: String, fileName: String,
                progress: (@MainActor (Double?) -> Void)? = nil) async throws -> URL {
         if let cached = get(deviceId: deviceId, fullPath: fullPath) { return cached }
-        let out = stage(fileName: fileName)
-        try await Transfers.download(api: api, deviceId: deviceId, path: fullPath, to: out, progress: progress)
-        commit(deviceId: deviceId, fullPath: fullPath, url: out)
-        return out
+        let k = keyOf(deviceId, fullPath)
+        lock.lock()
+        let entry: Inflight
+        if let e = inflight[k] {
+            e.waiters += 1
+            entry = e
+        } else {
+            let t = Task<URL, Error> { [self] in
+                let out = self.stage(fileName: fileName)
+                try await Transfers.download(api: api, deviceId: deviceId, path: fullPath, to: out) { f in
+                    self.lock.lock()
+                    let cbs = self.inflight[k]?.progress ?? []
+                    self.lock.unlock()
+                    for cb in cbs { cb(f) }
+                }
+                self.commit(deviceId: deviceId, fullPath: fullPath, url: out)
+                return out
+            }
+            entry = Inflight(task: t)
+            inflight[k] = entry
+        }
+        if let p = progress { entry.progress.append(p) }
+        lock.unlock()
+        defer {
+            lock.lock()
+            if let e = inflight[k], e.id == entry.id {
+                e.waiters -= 1
+                if e.waiters == 0 { inflight[k] = nil }
+            }
+            lock.unlock()
+        }
+        return try await withTaskCancellationHandler {
+            try await entry.task.value
+        } onCancel: {
+            lock.lock()
+            let last = inflight[k]?.id == entry.id && (inflight[k]?.waiters ?? 0) <= 1
+            lock.unlock()
+            if last { entry.task.cancel() }
+        }
     }
 }

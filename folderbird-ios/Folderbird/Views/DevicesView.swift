@@ -18,12 +18,12 @@ struct DevicesView: View {
     @EnvironmentObject var prefs: Prefs
     @EnvironmentObject var workspace: Workspace
     @State private var loading = true
+    @State private var reloadGen = 0
     @State private var error: String?
     @State private var showAdd = false
     @State private var showSettings = false
     @State private var toast: String?
     @State private var safari: IdentifiableURL?
-    @State private var appeared = false
 
     var body: some View {
         Group {
