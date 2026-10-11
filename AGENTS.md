@@ -349,7 +349,18 @@ without that footer was typed by Majid himself. Answer him in the thread of
 his message (`thread_ts`). Slack does not notify him about posts under his
 own name, so anything urgent also goes out as a PushNotification.
 
-### Posting once the Folderbird Agents app is set up
+### Posting under your own identity (works since 2026-10-11 15:42)
+
+The Folderbird Agents app is installed and its bot token is stored as a
+network secret in the cloud environment: the network gateway adds it to every
+request to slack.com, so no token appears in any session. Post with
+`chat.postMessage` and your own `username` and `icon_emoji` (table above), either
+with `python3 team/tools/slack_post.py <key> <file> [--thread <ts>]` or the
+self-contained snippet the coordinator sent you. Posts then show as you, not as
+Majid, and Slack notifies him about them. Bot posts carry `bot_id`
+`B0C86QVV62X`; Majid's own messages come from `U0C8GF0RF5J` with no bot id.
+
+### Earlier plan for the app (kept for reference)
 
 Majid creates the app from `team/slack/manifest.yaml`, invites it to the
 channel, allows `slack.com` in the environment's network settings, and stores

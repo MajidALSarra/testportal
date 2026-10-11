@@ -4,8 +4,9 @@
 Usage:
   python3 team/tools/slack_post.py <agent-key> <message-file|-> [--thread <ts>]
 
-Needs SLACK_BOT_TOKEN (the Folderbird Agents app's bot token) in the
-environment and slack.com allowed in the environment's network settings.
+The Folderbird Agents bot token is stored as a network secret in the cloud
+environment, so the network gateway adds it to requests to slack.com and no
+token is needed here. If SLACK_BOT_TOKEN is set, it is sent instead.
 Prints the new message's ts on success.
 """
 import json, os, ssl, sys, urllib.request
@@ -24,9 +25,7 @@ AGENTS = {
 def main(argv):
     if len(argv) < 3 or argv[1] not in AGENTS:
         sys.exit("usage: slack_post.py <" + "|".join(AGENTS) + "> <message-file|-> [--thread <ts>]")
-    token = os.environ.get("SLACK_BOT_TOKEN")
-    if not token:
-        sys.exit("SLACK_BOT_TOKEN is not set in this session's environment")
+    token = os.environ.get("SLACK_BOT_TOKEN", "")
     text = sys.stdin.read() if argv[2] == "-" else open(argv[2], encoding="utf-8").read()
     name, icon = AGENTS[argv[1]]
     body = {"channel": CHANNEL, "text": text.strip(), "username": name, "icon_emoji": icon,
@@ -35,9 +34,11 @@ def main(argv):
         body["thread_ts"] = argv[argv.index("--thread") + 1]
     cafile = os.environ.get("SSL_CERT_FILE") or ("/root/.ccr/ca-bundle.crt" if os.path.exists("/root/.ccr/ca-bundle.crt") else None)
     ctx = ssl.create_default_context(cafile=cafile) if cafile else ssl.create_default_context()
+    headers = {"Content-Type": "application/json; charset=utf-8"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request("https://slack.com/api/chat.postMessage", data=json.dumps(body).encode(),
-                                 headers={"Content-Type": "application/json; charset=utf-8",
-                                          "Authorization": "Bearer " + token})
+                                 headers=headers)
     with urllib.request.urlopen(req, context=ctx, timeout=30) as r:
         out = json.load(r)
     if not out.get("ok"):
