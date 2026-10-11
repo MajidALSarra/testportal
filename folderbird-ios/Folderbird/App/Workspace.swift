@@ -295,11 +295,8 @@ final class BrowseModel: ObservableObject {
         var failed = 0
         for item in items {
             do {
-                if let media = try await item.loadTransferable(type: PickedMedia.self) {
-                    urls.append(media.url)
-                } else {
-                    failed += 1
-                }
+                let media = try await item.loadTransferable(type: PickedMedia.self)
+                if let media { urls.append(media.url) } else { failed += 1 }
             } catch {
                 failed += 1
             }
