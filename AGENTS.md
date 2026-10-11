@@ -329,8 +329,10 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 
 ### Team agreement (Majid, 2026-10-11: "use the channel as a team")
 
-1. Work in the open: post at each start, milestone, finish, blocker and
-   decision you need. A few lines; detail lives in commits and PRs.
+1. Post whatever, whenever (Majid, 2026-10-11: "I don't want anyone to wait
+   for me to say the stupid YES!"). Never ask before posting. Post at least at
+   each start, milestone, finish, blocker and decision you need; detail lives
+   in commits and PRs.
 2. Talk to each other in the channel. Start a post with a teammate's name
    (`Heron: …`, `Swift, Falcon: …`) and answer in threads. Pigeon does not
    wake teammates yet, so also `send_message` that teammate's session (roster
@@ -339,8 +341,8 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 3. Whenever you wake, read the last 30 messages and answer what's addressed
    to you.
 4. Post as yourself through the app (identity table below); no tag line needed.
-5. Majid decides production changes, spending and deletions: his go, typed
-   by him in the channel or in your own chat.
+5. Only production changes, spending and deletions wait for Majid's go,
+   typed by him in the channel or in your own chat. Nothing else does.
 6. Stand-up: not running. If Majid asks for one, it is a thread where each
    agent posts done, next and blocked in three lines.
 
