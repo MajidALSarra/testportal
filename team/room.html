@@ -107,6 +107,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
 .refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .delivery{margin-top:4px;color:var(--muted);font-size:.76rem;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
 .delivery .bad{color:var(--bad)}
+.delivery .pending{color:var(--accent)}
 .q-state{margin-top:6px;font-size:.76rem;font-weight:600;color:var(--warn)}
 .q-state.done{color:var(--good)}
 .empty-feed{margin:auto;max-width:34ch;text-align:center;padding:32px 0;display:grid;gap:6px}
@@ -151,9 +152,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
   .feed{padding:12px 28px}
   .composer{padding:12px 28px 14px}
 }
-</style>
-
-<div class="app">
+</style><div class="app">
   <header class="top">
     <div>
       <h1>Folderbird Team Room</h1>
@@ -166,7 +165,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
       <h2 class="label">Agents</h2>
       <ul class="roster" id="roster"></ul>
       <p class="empty" id="roster-empty">The coordinator registers each agent here with its name, role and session.</p>
-      <p class="hint" id="live-hint" hidden></p>
+      <p class="hint" id="relay-hint" hidden></p>
     </section>
     <details class="needs" id="needs-wrap">
       <summary><h2 class="label">Waiting on you <span class="count" id="needs-count"></span></h2></summary>
@@ -197,25 +196,18 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
   "use strict";
   var HUMAN_KEY = "majid";
   var HUMAN_NAME = "Majid";
-  var REMOTE = "Claude Code Remote";
   var KIND_LABEL = { online: "Online", progress: "Progress", done: "Done", blocked: "Blocked", question: "Question" };
-  var BUCKET = {
-    working: ["working", "Working"],
-    blocked: ["blocked", "Waiting on you"],
-    review_ready: ["idle", "Idle"],
-    completed: ["idle", "Idle"],
-    failed: ["failed", "Stopped"]
+  var STATE = {
+    working: ["working", "Working"], waiting: ["blocked", "Waiting on you"], blocked: ["blocked", "Blocked"],
+    idle: ["idle", "Idle"], stopped: ["failed", "Stopped"], offline: ["idle", "Offline"]
   };
-  var AUTH_CODES = ["not_in_manifest", "approval_required", "consent_required", "needs_reauth", "server_not_connected",
-    "selection_required", "not_granted", "capability_disabled", "capability_removed", "blocked_by_policy"];
 
   var S = {
-    db: null, mcp: null, user: null, perms: null,
-    isOwner: false, canPost: true, roomUrl: "",
+    db: null, user: null,
+    isOwner: false, canPost: true,
     agents: new Map(), messages: [], byId: new Map(),
-    live: new Map(), watches: new Map(),
     selected: new Set(["all"]), touchedTo: false, mentionSeen: new Set(),
-    replyTo: null, openAgent: null, sending: false, pending: new Set(), stick: true, liveBlocked: null
+    replyTo: null, openAgent: null, sending: false, stick: true
   };
 
   function $(id) { return document.getElementById(id); }
@@ -267,7 +259,8 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     var t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
     return sameDay(d, t) ? "Today" : sameDay(d, y) ? "Yesterday" : fmtDay.format(d);
   }
-  function ago(ms) {
+  function ago(iso) {
+    var ms = Date.parse(iso); if (isNaN(ms)) return "";
     var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
     if (s < 90) return "just now";
     var m = Math.round(s / 60); if (m < 60) return m + " min ago";
@@ -295,83 +288,16 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     if (dotCls) a.append(h("span", { class: "dot " + dotCls }));
     return a;
   }
-
-  /* ---------- live session status ---------- */
-  function parseSession(p) {
-    var o = p;
-    if (typeof o === "string") {
-      var i = o.indexOf("{"), j = o.lastIndexOf("}");
-      if (i < 0 || j < i) return null;
-      try { o = JSON.parse(o.slice(i, j + 1)); } catch (e) { return null; }
-    }
-    var s = o && (o.ccr || o);
-    if (!s || typeof s !== "object") return null;
-    var em = s.external_metadata || {};
-    var pts = s.post_turn_summary || em.post_turn_summary || {};
-    return {
-      bucket: String(s.status_bucket || "").replace("SESSION_STATUS_BUCKET_", "").toLowerCase(),
-      task: s.task_summary || em.task_summary || "",
-      detail: pts.status_detail || "",
-      needs: pts.needs_action || "",
-      updated: s.updated_at || ""
-    };
-  }
-  function statusOf(key) {
-    var l = S.live.get(key);
-    if (!l) return { cls: "unknown", label: S.mcp ? "Checking…" : "Status not shown here" };
-    if (l.error) return { cls: "unknown", label: "Status off" };
-    var b = BUCKET[l.bucket] || ["unknown", "Unknown"];
-    return { cls: b[0], label: b[1] };
-  }
-  function syncWatches() {
-    if (!S.mcp) return;
-    S.agents.forEach(function (a, key) {
-      var cur = S.watches.get(key), sid = a.session_id || "";
-      if (cur && cur.sid === sid) return;
-      if (cur) cur.unsub();
-      if (!sid) { S.watches.delete(key); return; }
-      var unsub = S.mcp.watchTool(REMOTE, "get_session", { session_id: sid }, function (ev) {
-        if (ev.type === "data") {
-          var r = ev.result || {};
-          var first = r.content && r.content[0] && r.content[0].text;
-          var p = parseSession(r.payload != null ? r.payload : first);
-          if (p) { p.at = (r.cache && r.cache.storedAt) || Date.now(); S.live.set(key, p); }
-          S.liveBlocked = null;
-        } else {
-          var code = ev.error && ev.error.code;
-          if (AUTH_CODES.indexOf(code) >= 0) { S.live.set(key, { error: code }); S.liveBlocked = code; }
-          else if (!S.live.get(key)) S.live.set(key, { error: code || "upstream_error" });
-        }
-        renderRoster(); renderSheet(); renderSub();
-      }, { refetchInterval: 60000 });
-      S.watches.set(key, { sid: sid, unsub: unsub });
-    });
-    Array.from(S.watches.keys()).forEach(function (key) {
-      if (!S.agents.has(key)) { S.watches.get(key).unsub(); S.watches.delete(key); S.live.delete(key); }
-    });
-  }
-  function restartWatches() {
-    S.watches.forEach(function (w) { w.unsub(); });
-    S.watches.clear(); S.live.clear(); S.liveBlocked = null;
-    syncWatches(); renderRoster();
-  }
-  function allowRemote() {
-    if (!S.perms) return;
-    S.perms.request(["mcp:" + REMOTE]).then(function () { restartWatches(); }, function () {});
-  }
-  function remoteFix(code) {
-    if (code === "needs_reauth") return "Reconnect Claude Code Remote in claude.ai Settings, then Connectors.";
-    if (code === "server_not_connected" || code === "selection_required") return "Claude Code Remote isn't available to this page for your account.";
-    if (code === "blocked_by_policy") return "Your organization's policy blocks Claude Code Remote here.";
-    if (code === "not_granted" || code === "capability_disabled" || code === "capability_removed") return "This view can't reach your sessions. Open the room in the Claude app or claude.ai.";
-    return "Allow Claude Code Remote for this page to see live status and wake agents.";
+  function statusOf(a) {
+    var st = STATE[String(a && a.state || "").toLowerCase()];
+    return st ? { cls: st[0], label: st[1] } : { cls: "unknown", label: "No status yet" };
   }
 
   /* ---------- render: header ---------- */
   function renderSub() {
     if (!S.db) return;
-    var n = S.agents.size, working = 0, waiting = 0;
-    S.agents.forEach(function (a, key) { var st = statusOf(key).cls; if (st === "working") working++; if (st === "blocked") waiting++; });
+    var n = 0, working = 0, waiting = 0;
+    S.agents.forEach(function (a) { if (a.role === "coordinator") return; n++; var c = statusOf(a).cls; if (c === "working") working++; if (c === "blocked") waiting++; });
     var open = S.messages.filter(isOpenQuestion).length;
     var parts = [n + (n === 1 ? " agent" : " agents")];
     if (working) parts.push(working + " working");
@@ -385,24 +311,15 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     var ul = $("roster"); ul.replaceChildren();
     $("roster-empty").hidden = S.agents.size > 0;
     S.agents.forEach(function (a, key) {
-      var st = statusOf(key);
-      var s = { name: a.name || key, color: a.color };
+      var st = statusOf(a);
       ul.append(h("li", null, h("button", { type: "button", class: "agent-btn", onclick: function () { openAgent(key); },
         "aria-label": (a.name || key) + ", " + st.label },
-        avatar(s, st.cls),
+        avatar({ name: a.name || key, color: a.color }, st.cls),
         h("span", { class: "agent-meta" },
           h("span", { class: "agent-name", text: a.name || key }),
           h("span", { class: "agent-role", text: a.role_title || a.role || "" }),
           h("span", { class: "agent-state " + st.cls, text: st.label })))));
     });
-    var lh = $("live-hint");
-    if (S.liveBlocked) {
-      lh.hidden = false; lh.replaceChildren(remoteFix(S.liveBlocked) + " ");
-      if (S.perms && ["not_in_manifest", "approval_required", "consent_required"].indexOf(S.liveBlocked) >= 0)
-        lh.append(h("button", { type: "button", class: "link", onclick: allowRemote, text: "Allow" }));
-    } else if (S.db && !S.mcp && S.agents.size) {
-      lh.hidden = false; lh.textContent = "Live status and wake-ups need the Claude app or claude.ai. Messages still save.";
-    } else lh.hidden = true;
   }
 
   /* ---------- render: waiting on you ---------- */
@@ -448,7 +365,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
       feed.append(h("div", { class: "empty-feed" },
         h("p", { class: "empty-title", text: S.db ? "No messages yet" : "Connecting…" }),
         h("p", { class: "empty", text: S.db
-          ? "Agents post their status here when they come online. Say hello to everyone, or tap an agent to message just that one."
+          ? "Agents post their status here. Say hello to everyone, or tap an agent to message just that one."
           : "The room's messages load when this page opens inside claude.ai or the Claude app." })));
       return;
     }
@@ -489,36 +406,19 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     return h("article", { class: "msg" + (cont ? " cont" : "") + (s.human ? " mine" : ""), id: "m-" + m.id },
       cont ? h("span", { class: "avatar-gap" }) : avatar(s), body);
   }
-  function reason(code) {
-    switch (code) {
-      case "not_in_manifest": case "approval_required": case "consent_required": return "Claude Code Remote isn't allowed for this page yet";
-      case "needs_reauth": return "reconnect Claude Code Remote in Settings";
-      case "server_not_connected": case "selection_required": return "Claude Code Remote isn't available here";
-      case "tool_error": return "the session service refused it";
-      case "no_session": return "no session is linked to this agent";
-      case "no_mcp": return "wake-ups need the Claude app or claude.ai";
-      case "cancelled": return "cancelled";
-      default: return "the session service didn't answer";
-    }
-  }
   function deliveryLine(m) {
     var to = Array.isArray(m.to) ? m.to : [];
-    var dv = m.delivery;
-    if (!dv || typeof dv !== "object") {
-      if (!to.length) return h("div", { class: "delivery", text: "Saved to the room. No one was woken." });
-      return h("div", { class: "delivery", text: S.pending.has(m.id) ? "Waking " + names(to) + "…" : "Agents weren't woken" });
-    }
-    var ok = [], bad = [];
-    Object.keys(dv).forEach(function (k) { (dv[k] && dv[k].ok ? ok : bad).push(k); });
+    var dv = (m.delivery && typeof m.delivery === "object") ? m.delivery : null;
     var line = h("div", { class: "delivery" });
-    if (ok.length) line.append(h("span", { text: "Woke " + names(ok) }));
-    if (bad.length) {
-      line.append(h("span", { class: "bad", text: "Not delivered to " + names(bad) + ": " + reason(dv[bad[0]] && dv[bad[0]].code) }));
-      if (S.canPost && S.mcp) line.append(h("button", { type: "button", class: "link", onclick: function (e) { retry(m, bad, e.currentTarget); }, text: "Try again" }));
-      var c = dv[bad[0]] && dv[bad[0]].code;
-      if (S.perms && ["not_in_manifest", "approval_required", "consent_required"].indexOf(c) >= 0)
-        line.append(h("button", { type: "button", class: "link", onclick: allowRemote, text: "Allow" }));
+    if (!to.length) { line.textContent = "Saved to the room. No one was woken."; return line; }
+    if (dv) {
+      var ok = [], bad = [];
+      Object.keys(dv).forEach(function (k) { (dv[k] && dv[k].ok ? ok : bad).push(k); });
+      if (ok.length) line.append(h("span", { text: "Woke " + names(ok) + " through the Coordinator" }));
+      if (bad.length) line.append(h("span", { class: "bad", text: "Not woken: " + names(bad) }));
+      return line;
     }
+    line.append(h("span", { class: "pending", text: "Saved for " + names(to) + ". The Coordinator wakes them when you tell it in its chat." }));
     return line;
   }
 
@@ -532,10 +432,8 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     chip("all", "Everyone");
     S.agents.forEach(function (a, key) { chip(key, a.name || key); });
     var targets = resolveTargets();
-    var msg = !S.mcp ? "Saved to the room. Wake-ups need the Claude app or claude.ai."
-      : !targets.length ? "Saved to the room only. No one is woken."
-      : S.selected.has("all") ? "Wakes everyone. Busy agents read it when their current step ends."
-      : "Wakes " + names(targets) + ". A busy agent reads it when its current step ends.";
+    var msg = !targets.length ? "Saved to the room only."
+      : "Saved for " + (S.selected.has("all") ? "everyone" : names(targets)) + ". To wake them now, tell the Coordinator in its chat.";
     if (!$("hint").classList.contains("bad")) $("hint").textContent = msg;
   }
   function toggle(key) {
@@ -579,7 +477,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
   function clearHint() { $("hint").classList.remove("bad"); }
   function dbErr(e) {
     switch (e && e.code) {
-      case "quota_exceeded": return "The room is full. Ask the coordinator to archive old messages.";
+      case "quota_exceeded": return "The room is full. Ask the Coordinator to archive old messages.";
       case "revoked": return "Your access to this room changed. Reload the page.";
       case "resource_exhausted": return "Too many changes at once. Wait a moment and try again.";
       case "invalid_argument": return "That couldn't be saved. It may be too long.";
@@ -587,36 +485,6 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     }
   }
   function setBusy(b) { $("send").disabled = b || !S.db || !S.canPost; $("msg").disabled = !S.db || !S.canPost; }
-  function wakeText(a, doc, targets, id) {
-    var others = targets.filter(function (k) { return k !== a.key; }).map(agentName);
-    var lines = ["[Folderbird team room] " + HUMAN_NAME + " wrote to " + a.name + (others.length ? " (also sent to " + others.join(", ") + ")" : "") + ":", "", doc.text];
-    if (doc.reply_to) {
-      var r = S.byId.get(doc.reply_to);
-      if (r) lines.push("", "(In reply to " + agentName(String(r.from || "").toLowerCase()) + ": \"" + String(r.text || "").slice(0, 240) + "\")");
-    }
-    lines.push("", "Message id: " + id,
-      "Answer in the team room as " + a.name + ": ArtifactData action \"set\" on " + (S.roomUrl || "the team room") +
-      ", collection \"messages\", with from \"" + a.key + "\" and reply_to \"" + id + "\". The Team room section of your brief has the format.");
-    return lines.join("\n");
-  }
-  function deliver(id, doc, targets) {
-    var res = {}, i = 0;
-    function next() {
-      if (i >= targets.length) return Promise.resolve(res);
-      var key = targets[i++], a = S.agents.get(key);
-      if (!S.mcp) { res[key] = { ok: false, code: "no_mcp" }; return next(); }
-      if (!a || !a.session_id) { res[key] = { ok: false, code: "no_session" }; return next(); }
-      return S.mcp.callTool(REMOTE, "send_message", { session_id: a.session_id, message: wakeText(a, doc, targets, id), priority: "later" })
-        .then(function () { res[key] = { ok: true }; return next(); },
-          function (e) {
-            var code = (e && e.code) || "upstream_error";
-            res[key] = { ok: false, code: code };
-            if (AUTH_CODES.indexOf(code) >= 0) { targets.forEach(function (k) { if (!res[k]) res[k] = { ok: false, code: code }; }); return res; }
-            return next();
-          });
-    }
-    return next();
-  }
   function onSend(ev) {
     ev.preventDefault();
     if (S.sending || !S.db || !S.canPost) return;
@@ -633,19 +501,7 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
       clearReply(); S.mentionSeen.clear(); S.stick = true;
       if (!S.touchedTo) S.selected = new Set(["all"]);
       S.sending = false; setBusy(false); renderTo();
-      if (!targets.length) return;
-      S.pending.add(id); renderFeed();
-      return deliver(id, doc, targets.slice()).then(function (res) {
-        return S.db.collection("messages").doc(id).update({ delivery: res });
-      }).catch(function () { hint("Sent, but the delivery note couldn't be saved.", true); })
-        .then(function () { S.pending.delete(id); renderFeed(); });
     }, function (e) { S.sending = false; setBusy(false); hint(dbErr(e), true); });
-  }
-  function retry(m, keys, btn) {
-    btn.disabled = true;
-    deliver(m.id, m, keys.slice()).then(function (res) {
-      return S.db.collection("messages").doc(m.id).update({ delivery: res });
-    }).catch(function (e) { btn.disabled = false; hint(dbErr(e), true); });
   }
   function saveDraft(v) { try { localStorage.setItem("fb-room-draft", v); } catch (e) {} }
   function loadDraft() { try { return localStorage.getItem("fb-room-draft") || ""; } catch (e) { return ""; } }
@@ -656,12 +512,11 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
   function renderSheet() {
     var sheet = $("sheet"), scrim = $("scrim"), key = S.openAgent, a = key && S.agents.get(key);
     if (!a) { sheet.hidden = true; scrim.hidden = true; return; }
-    var st = statusOf(key), l = S.live.get(key) || {};
+    var st = statusOf(a);
     var facts = h("dl", { class: "facts" });
     function fact(k, v) { if (v) { facts.append(h("dt", { text: k })); facts.append(h("dd", null, v)); } }
-    fact("Status", st.label + (l.at ? " · checked " + ago(l.at) : ""));
-    fact("Doing", l.task || l.detail || a.status_text || "");
-    if (l.needs) fact("Needs", l.needs);
+    fact("Status", st.label + (a.updated_at ? " · updated " + ago(a.updated_at) : ""));
+    fact("Doing", a.status_text || "");
     fact("Owns", a.headline || "");
     if (Array.isArray(a.repos) && a.repos.length) fact("Repos", h("span", { class: "mono" }, a.repos.join("\n")));
     fact("Session", a.session_id ? h("span", { class: "mono", text: a.session_id }) : "");
@@ -678,7 +533,13 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
   }
 
   /* ---------- boot ---------- */
-  function renderAll() { renderRoster(); renderTo(); renderFeed(); renderNeeds(); renderSub(); setBusy(S.sending); }
+  function renderRelayHint() {
+    var n = $("relay-hint");
+    if (!S.db) { n.hidden = true; return; }
+    n.hidden = false;
+    n.textContent = "This page saves messages but can't wake a session; claude.ai doesn't allow that from a page. To wake agents, tell the Coordinator in its own chat. It relays and records the delivery here.";
+  }
+  function renderAll() { renderRoster(); renderTo(); renderFeed(); renderNeeds(); renderSub(); renderRelayHint(); setBusy(S.sending); }
   function use(name) {
     try { return (window.claude && window.claude.use) ? window.claude.use(name).catch(function () { return null; }) : Promise.resolve(null); }
     catch (e) { return Promise.resolve(null); }
@@ -692,22 +553,19 @@ a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:non
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && S.openAgent) closeAgent(); });
     $("msg").value = loadDraft();
     renderAll();
-    Promise.all([use("db"), use("user"), use("mcp"), use("permissions")]).then(function (r) {
-      S.db = r[0]; S.user = r[1]; S.mcp = r[2]; S.perms = r[3];
+    Promise.all([use("db"), use("user")]).then(function (r) {
+      S.db = r[0]; S.user = r[1];
       var who = S.user ? Promise.all([S.user.isOwner(), S.user.can("data.write")]) : Promise.resolve([true, null]);
       return who.then(function (w) { S.isOwner = !!w[0]; S.canPost = !!w[0] || w[1] !== false; });
     }).then(function () {
       if (!S.db) { $("sub").textContent = "Open this room in the Claude app or claude.ai"; renderAll(); return; }
-      S.db.doc("config/room").onSnapshot(function (snap) {
-        var d = snap.exists ? snap.data() : null; S.roomUrl = (d && typeof d.url === "string") ? d.url : "";
-      }, function () {});
       S.db.collection("agents").onSnapshot(function (snap) {
         var rows = snap.docs.filter(function (d) { return d.exists; }).map(function (d) {
           var v = d.data() || {}; var o = {}; Object.keys(v).forEach(function (k) { o[k] = v[k]; }); o.key = d.id; return o;
         });
         rows.sort(function (a, b) { return (a.order == null ? 99 : a.order) - (b.order == null ? 99 : b.order); });
         S.agents = new Map(rows.map(function (o) { return [o.key, o]; }));
-        syncWatches(); renderAll();
+        renderAll(); if (S.openAgent) renderSheet();
       }, function (e) { hint(dbErr(e), true); });
       S.db.collection("messages").orderBy("ts", "desc").limit(300).onSnapshot(function (snap) {
         S.messages = snap.docs.filter(function (d) { return d.exists; }).map(function (d) {
