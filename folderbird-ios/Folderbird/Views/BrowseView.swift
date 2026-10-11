@@ -2,6 +2,7 @@ import SwiftUI
 import QuickLook
 import UniformTypeIdentifiers
 import UIKit
+import PhotosUI
 
 enum BrowseLayout { case compact, regular }
 
@@ -18,6 +19,8 @@ struct BrowseView: View {
     @State private var newFolderOpen = false
     @State private var newFolderName = ""
     @State private var showImporter = false
+    @State private var showPhotos = false
+    @State private var pickedPhotos: [PhotosPickerItem] = []
     @State private var previewFrac: CGFloat = 0.5
     @State private var shareItem: IdentifiableURL?
 
@@ -57,6 +60,12 @@ struct BrowseView: View {
         .onChange(of: model.searchOpen) { _, open in if !open { model.closeSearch() } }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { Task { await model.upload(urls) } }
+        }
+        .photosPicker(isPresented: $showPhotos, selection: $pickedPhotos, maxSelectionCount: 20, matching: .any(of: [.images, .videos]))
+        .onChange(of: pickedPhotos) { _, items in
+            guard !items.isEmpty else { return }
+            pickedPhotos = []
+            Task { await model.upload(picked: items) }
         }
         .alert("New folder", isPresented: $newFolderOpen) {
             TextField("Folder name", text: $newFolderName)
@@ -99,6 +108,7 @@ struct BrowseView: View {
                 Menu {
                     Button { showImporter = true } label: { Label("Upload file here", systemImage: "square.and.arrow.up") }
                         .keyboardShortcut("u", modifiers: .command)
+                    Button { showPhotos = true } label: { Label("Upload photos or videos", systemImage: "photo.on.rectangle") }
                     Button { newFolderOpen = true } label: { Label("New folder", systemImage: "folder.badge.plus") }
                         .keyboardShortcut("n", modifiers: [.command, .shift])
                 } label: {
@@ -156,6 +166,7 @@ struct BrowseView: View {
 
 /// Phone-only: the console and the editor push onto the navigation stack (on iPad they are the detail column).
 @MainActor
+@MainActor
 private struct CompactRoutes: ViewModifier {
     @ObservedObject var model: BrowseModel
     let enabled: Bool
@@ -166,6 +177,10 @@ private struct CompactRoutes: ViewModifier {
             content
                 .navigationDestination(isPresented: $model.consoleOpen) { ConsoleView(model: model).toast($model.toast) }
                 .navigationDestination(item: $model.editing) { f in FileViewerView(model: model, file: f).toast($model.toast) }
+                // Back out of the editor discards the buffer, as Android's BackHandler does: otherwise a pop keeps
+                // abandoned edits alive and the next open of the same file shows them instead of the PC's content.
+                // closeEditor() already resets, so this is idempotent on the Close button path.
+                .onChange(of: model.editing) { _, now in if now == nil { model.draft.reset() } }
         } else {
             content
         }

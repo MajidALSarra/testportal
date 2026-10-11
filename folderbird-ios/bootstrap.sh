@@ -23,7 +23,8 @@ fi
 cat <<'MSG'
 
 Next, in Xcode:
-  1. Select the Folderbird target → Signing & Capabilities → pick your Team (do the same for FolderbirdShare).
-     The App Group (group.com.folderbird.companion) and Keychain Sharing capabilities are already declared.
+  1. Put your Team ID in project.yml (settings.base.DEVELOPMENT_TEAM) and re-run ./bootstrap.sh — a Team picked in
+     Xcode's Signing & Capabilities is overwritten by the next generate. The App Group
+     (group.com.folderbird.companion) and Keychain Sharing capabilities are already declared.
   2. Run on an iPhone / iPad or the Simulator (⌘R).
 MSG

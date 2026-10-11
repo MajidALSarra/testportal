@@ -43,6 +43,9 @@ jobs:
           grep -q "(in target 'Folderbird' from project 'Folderbird')" build.log
           grep -q "(in target 'FolderbirdShare' from project 'Folderbird')" build.log
           test -d build/Build/Products/Debug-iphonesimulator/Folderbird.app/PlugIns/FolderbirdShare.appex
+          # both bundles must carry a privacy manifest (App Store Connect rejects uploads without one: ITMS-91053)
+          test -f build/Build/Products/Debug-iphonesimulator/Folderbird.app/PrivacyInfo.xcprivacy
+          test -f build/Build/Products/Debug-iphonesimulator/Folderbird.app/PlugIns/FolderbirdShare.appex/PrivacyInfo.xcprivacy
           echo "Swift warnings: $(grep -cE '\.swift:[0-9]+:[0-9]+: warning:' build.log || true)"
 
       - name: Diagnostics on failure

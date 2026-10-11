@@ -21,7 +21,8 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
-    # Set your Apple Developer team here or in Xcode → Signing & Capabilities (both targets).
+    # Put your Apple Developer Team ID here (e.g. "AB12CD34EF"). A Team picked in Xcode's Signing & Capabilities is
+    # written into the generated .xcodeproj, which is git-ignored and overwritten by the next `xcodegen generate`.
     DEVELOPMENT_TEAM: ""
     TARGETED_DEVICE_FAMILY: "1,2"
     SWIFT_STRICT_CONCURRENCY: minimal

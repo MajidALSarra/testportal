@@ -1,6 +1,9 @@
 import SwiftUI
 import Combine
 import UIKit
+import PhotosUI
+import CoreTransferable
+import UniformTypeIdentifiers
 
 /// Where a finished "save to this device" landed, and the URL to share it from.
 struct SavedDownload: Identifiable {
@@ -188,7 +191,10 @@ final class BrowseModel: ObservableObject {
     /// the user's way to force fresh bytes for a file being edited there.
     func refresh() async {
         PreviewCache.shared.clear()
-        if !draft.dirty { draft.reset() }   // a clean buffer is re-read from the PC next time; edits are kept
+        // A clean buffer is dropped so the next open re-reads the PC — unless an editor is showing it right now
+        // (on iPad the folder toolbar and ⌘R stay reachable beside the detail column, and resetting the draft
+        // the TextEditor is bound to would blank it). Edits are always kept.
+        if editing == nil && !draft.dirty { draft.reset() }
         if path == nil { await loadDrives() } else { await load(path) }
     }
 
@@ -277,6 +283,34 @@ final class BrowseModel: ObservableObject {
         guard let folder = path else { return }
         for url in urls { await uploadOne(url, to: folder) }
         await load(folder)
+    }
+
+    /// Upload photos/videos picked from the Photos library (the Android picker reaches the gallery; the Files
+    /// picker on iOS does not). PickedMedia has already copied each item into a temp folder of ours, so the
+    /// normal upload path handles them; those folders are removed afterwards.
+    func upload(picked items: [PhotosPickerItem]) async {
+        guard path != nil, !items.isEmpty else { return }
+        setXfer(Xfer(label: items.count == 1 ? "Reading from Photos…" : "Reading \(items.count) items from Photos…", frac: nil))
+        var urls: [URL] = []
+        var failed = 0
+        for item in items {
+            do {
+                if let media = try await item.loadTransferable(type: PickedMedia.self) { urls.append(media.url) }
+                else { failed += 1 }
+            } catch {
+                failed += 1
+            }
+        }
+        defer { for u in urls { try? FileManager.default.removeItem(at: u.deletingLastPathComponent()) } }
+        if urls.isEmpty {
+            finishXfer(Xfer(label: items.count == 1 ? "Couldn't read that item from Photos." : "Couldn't read those items from Photos.",
+                            frac: nil, done: true, error: true))
+            return
+        }
+        await upload(urls)
+        if failed > 0 {
+            finishXfer(Xfer(label: "\(failed) of \(items.count) items couldn't be read from Photos.", frac: nil, done: true, error: true))
+        }
     }
 
     private func uploadOne(_ url: URL, to folder: String) async {
@@ -444,6 +478,27 @@ final class BrowseModel: ObservableObject {
 }
 
 /// A free file name in `dir`: "name.ext", then "name (1).ext", "name (2).ext", … so nothing is overwritten.
+/// A photo or video handed over by PhotosPicker. The picker's file lives only until the import closure returns,
+/// so it is copied into a private temp folder of ours first; the original name (IMG_1234.HEIC, IMG_0042.MOV) is
+/// kept, which is what lands on the PC.
+struct PickedMedia: Transferable, Sendable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .movie) { received in try PickedMedia(copying: received.file) }
+        FileRepresentation(importedContentType: .image) { received in try PickedMedia(copying: received.file) }
+    }
+
+    private init(copying file: URL) throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fb-photos-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let name = PathUtil.fileName(file.lastPathComponent).isEmpty ? "photo" : PathUtil.fileName(file.lastPathComponent)
+        let dest = dir.appendingPathComponent(name)
+        try FileManager.default.copyItem(at: file, to: dest)
+        url = dest
+    }
+}
+
 func uniqueURL(in dir: URL, name: String) -> URL {
     let fm = FileManager.default
     let clean = PathUtil.fileName(name).isEmpty ? "file" : PathUtil.fileName(name)

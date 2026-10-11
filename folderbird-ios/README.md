@@ -22,7 +22,7 @@ look — plus a layout that uses the whole screen on an iPad.
   the app's theme. Docked, resizable bottom panel on iPhone; the detail column on iPad.
 - **Open / edit** — a full-screen text editor that saves back to the PC (`/files/write`), plus Open (Quick Look)
   and **Save to this device** (lands in Files › On My iPad › Folderbird, with Share offered as a button).
-- **Upload** from the Files picker, **New folder**, and transfer progress with the honest two-phase bar
+- **Upload** from the Files picker or from Photos (photos and videos keep their original names), **New folder**, and transfer progress with the honest two-phase bar
   (phone → server, then server → PC).
 - **Command console** — cmd / PowerShell through `/exec`; commands the server classes as destructive (409
   `confirm_destructive_required`) are confirmed on the device first, exactly like Android.
@@ -60,7 +60,9 @@ The Xcode project is generated from `project.yml` and is not committed.
 ./bootstrap.sh          # installs XcodeGen via Homebrew if needed, runs `xcodegen generate`, opens the project
 ```
 
-Then in Xcode, for **both** targets (Folderbird and FolderbirdShare): Signing & Capabilities → choose your Team.
+Then put your Apple Developer **Team ID** in `project.yml` (`settings.base.DEVELOPMENT_TEAM`) and re-run `./bootstrap.sh`;
+it applies to both targets. (A Team picked in Xcode's Signing & Capabilities is written into the generated, git-ignored
+`.xcodeproj` and is lost on the next generate.)
 The App Group (`group.com.folderbird.companion`) and Keychain Sharing (`$(AppIdentifierPrefix)com.folderbird.companion`)
 capabilities are declared in the generated entitlements; Xcode registers them with your team automatically. Run on a
 device or the Simulator with ⌘R. (Signed builds are needed for the share extension and the shared keychain to work on a
@@ -133,8 +135,9 @@ flag, **No** leaves the server's refusal in the history. The flag is never sent 
 
 "Sign in with Folderbird" uses `/app/authorize` + `/app/token` with `redirect_uri=folderbird://auth`, `client: "ios"`,
 a `device_name` and a stable per-install `install_id` (so a re-sign-in retires this install's previous key only).
-Sign-out POSTs `/app/revoke`. Until those endpoints are live on your server, use the API-key option
-(Integrations → API keys) or point the server URL at an environment that has them.
+Sign-out POSTs `/app/revoke`. These endpoints are live on folderbird.com. A self-hosted server without them can use
+the API-key option instead: create a key on the website under your account name → **Manage API keys**
+(`/Manage/ApiKeys`) and paste it into the app's sign-in screen.
 
 ## Tech
 
@@ -147,3 +150,10 @@ No third-party dependencies.
       file on the server; the custom scheme works today and is what the server allowlists for the mobile apps.
 - [ ] Server-side thumbnails (a web-side feature) would be the real fix for large-image latency.
 - [ ] Phase 2 (as on Android): device-as-agent.
+
+## Privacy manifests
+
+`Folderbird/Resources/PrivacyInfo.xcprivacy` and `ShareExtension/PrivacyInfo.xcprivacy` declare the two required-reason
+API categories the code uses — the App Group's `UserDefaults` (reason `CA92.1`) and file timestamps for the preview
+cache sweep (`C617.1`). App Store Connect rejects an upload without them (ITMS-91053); CI checks that both bundles carry
+one. If you add a required-reason API (disk space, system boot time, keyboard list, …), add its category and reason.
