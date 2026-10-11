@@ -8,3 +8,4 @@ build/
 
 # Built APKs
 *.apk
+__pycache__/
