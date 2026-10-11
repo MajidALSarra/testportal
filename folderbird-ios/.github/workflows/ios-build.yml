@@ -15,6 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -27,7 +32,33 @@ jobs:
           xcodebuild -project Folderbird.xcodeproj -scheme Folderbird \
             -destination 'generic/platform=iOS Simulator' \
             -configuration Debug -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -80
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build.log | grep -E "error:|warning:|BUILD|\*\* " || true
+          # the grep above only filters the console; the verdict is read from the full log
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Verify both targets were built
+        run: |
+          grep -E "^=== BUILD TARGET " build.log | sort -u
+          grep -q "=== BUILD TARGET Folderbird " build.log
+          grep -q "=== BUILD TARGET FolderbirdShare " build.log
+          test -d build/Build/Products/Debug-iphonesimulator/Folderbird.app/PlugIns/FolderbirdShare.appex
+          echo "Swift warnings: $(grep -cE '\.swift:[0-9]+:[0-9]+: warning:' build.log || true)"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== errors ==="
+          grep -nE "error:" build.log | head -200 || true
+          echo "=== last 120 lines ==="
+          tail -120 build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Package the simulator build
         run: |

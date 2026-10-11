@@ -39,8 +39,16 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -configuration Debug -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build.log | grep -E "error:|warning:|BUILD|\*\* " || true
-          # the pipeline's exit status is xcodebuild's thanks to pipefail; re-check explicitly
+          # the grep above only filters the console; the verdict is read from the full log
           grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Verify both targets were built
+        run: |
+          grep -E "^=== BUILD TARGET " build.log | sort -u
+          grep -q "=== BUILD TARGET Folderbird " build.log
+          grep -q "=== BUILD TARGET FolderbirdShare " build.log
+          test -d build/Build/Products/Debug-iphonesimulator/Folderbird.app/PlugIns/FolderbirdShare.appex
+          echo "Swift warnings: $(grep -cE '\.swift:[0-9]+:[0-9]+: warning:' build.log || true)"
 
       - name: Diagnostics on failure
         if: failure()

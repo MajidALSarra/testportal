@@ -139,7 +139,7 @@ struct FileViewerView: View {
             // pull the whole file down a second time.
             let local = try await PreviewCache.shared.fetch(api: api, deviceId: model.deviceId, fullPath: file.path, fileName: name)
             if isText {
-                if let t = await Task.detached(priority: .userInitiated) { readText(local) }.value {
+                if let t = await Task.detached(priority: .userInitiated, operation: { readText(local) }).value {
                     draft.path = file.path
                     draft.text = t
                     draft.loadedText = t
