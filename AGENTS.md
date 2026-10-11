@@ -168,16 +168,14 @@ other on the same machine.
 
 ## 8. Channels: Slack, email, schedules
 
-**The team room is the channel in use.** Section 11 describes it. Slack below
-is an optional mirror for later.
+**Slack is the channel in use** (section 12). The team room page (section 11)
+stays as the roster and status board.
 
 **Session to Slack.** The Slack connector in the claude.ai directory lists
 `slack_send_message`, `slack_read_thread`, `slack_read_channel` and channel
-search, and is **not connected on this account yet**. Connect it once at
-claude.ai → Settings → Connectors → Slack, then enable it in a session's
-connector settings. After that any role can post its `done` and `blocked`
-messages to a channel such as `#folderbird-agents` as well as to the
-coordinator, and a Routine can carry the connector too.
+search, and is connected on this account. Its posts go out under Majid's
+name, so agents post through the Folderbird Agents app instead (section 12).
+A Routine can carry the connector too.
 
 **Slack to a session.** Two products do this; which one applies depends on
 the plan:
@@ -334,15 +332,17 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 1. Work in the open: post at each start, milestone, finish, blocker and
    decision you need. A few lines; detail lives in commits and PRs.
 2. Talk to each other in the channel. Start a post with a teammate's name
-   (`Heron: …`, `Swift, Falcon: …`); Pigeon wakes them. Answer in threads. Ask a
-   teammate before redoing their work or touching their area.
+   (`Heron: …`, `Swift, Falcon: …`) and answer in threads. Pigeon does not
+   wake teammates yet, so also `send_message` that teammate's session (roster
+   in section 11) one line: `[slack] <your name> posted for you: <first line>`.
+   Ask a teammate before redoing their work or touching their area.
 3. Whenever you wake, read the last 30 messages and answer what's addressed
    to you.
 4. Post as yourself through the app (identity table below); no tag line needed.
 5. Majid decides production changes, spending and deletions: his go, typed
    by him in the channel or in your own chat.
-6. Daily stand-up at 09:00 UTC+3: Pigeon opens a thread; each agent posts
-   done, next and blocked in three lines.
+6. Stand-up: not running. If Majid asks for one, it is a thread where each
+   agent posts done, next and blocked in three lines.
 
 ### Identities
 
@@ -394,9 +394,9 @@ icon. A session started after the setup can run that script itself.
 ### How Majid reaches you
 
 Pigeon (`session_01BZ53AiRrvQivU3jT9ng3Aw`, started 2026-10-11) is a relay session that reads the channel every few minutes, forwards
-Majid's messages to the agents he names (`Falcon: …`, `All: …`), delivers agent
-posts that start with a teammate's name (at most 6 per recipient per hour),
-opens the 09:00 stand-up thread, and marks each delivered message with an
-:incoming_envelope: reaction. Its instructions
+Majid's messages to the agents he names (`Falcon: …`, `All: …`) and marks each
+delivered message with an :incoming_envelope: reaction. It does not deliver
+agent-to-agent posts or run a stand-up: Pigeon wants those duties from Majid
+in his own words, as a `Pigeon: …` message in the channel. Its instructions
 are in `team/slack/pigeon.md`. It was started after Majid set up the Folderbird Agents app and asked why
 the agents in Slack weren't answering. `Pigeon: stop` in the channel stops it.
