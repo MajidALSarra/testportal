@@ -1,0 +1,71 @@
+name: Build Folderbird iOS
+
+# Compiles folderbird-ios/ (app + share extension) for the iOS Simulator on a macOS runner — unsigned, so it
+# validates the code without an Apple Developer account. This is the relocated copy of
+# folderbird-ios/.github/workflows/ios-build.yml, placed at the repo root so GitHub runs it while the iOS
+# project is parked on this branch; it moves back to its own repo together with the folder.
+on:
+  push:
+    branches: [ ccr-16ba29e8-ctyi27 ]
+    paths:
+      - 'folderbird-ios/**'
+      - '.github/workflows/folderbird-ios-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: folderbird-ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (iOS Simulator, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project Folderbird.xcodeproj -scheme Folderbird \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 | tee build.log | grep -E "error:|warning:|BUILD|\*\* " || true
+          # the pipeline's exit status is xcodebuild's thanks to pipefail; re-check explicitly
+          grep -q "BUILD SUCCEEDED" build.log
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== errors ==="
+          grep -nE "error:" build.log | head -200 || true
+          echo "=== last 120 lines ==="
+          tail -120 build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: folderbird-ios/build.log
+          if-no-files-found: ignore
+
+      - name: Package the simulator build
+        run: |
+          cd build/Build/Products/Debug-iphonesimulator
+          zip -r -q "$GITHUB_WORKSPACE/Folderbird-simulator.zip" Folderbird.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folderbird-simulator
+          path: Folderbird-simulator.zip
+          if-no-files-found: error
