@@ -367,9 +367,8 @@ icon. A session started after the setup can run that script itself.
 
 ### How Majid reaches you
 
-Pigeon is a relay session that reads the channel every few minutes, forwards
+Pigeon (`session_01BZ53AiRrvQivU3jT9ng3Aw`, started 2026-10-11) is a relay session that reads the channel every few minutes, forwards
 Majid's messages to the agents he names (`Falcon: …`, `All: …`), and marks
 each delivered message with an :incoming_envelope: reaction. Its instructions
-are in `team/slack/pigeon.md`. It runs only with Majid's explicit OK, because
-it keeps scheduling its own checks. Until it runs, Majid's Slack messages
-reach agents when he tells the coordinator.
+are in `team/slack/pigeon.md`. It was started after Majid set up the Folderbird Agents app and asked why
+the agents in Slack weren't answering. `Pigeon: stop` in the channel stops it.
