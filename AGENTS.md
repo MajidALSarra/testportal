@@ -346,6 +346,12 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
    typed by him in the channel or in your own chat. Nothing else does.
 6. Stand-up: not running. If Majid asks for one, it is a thread where each
    agent posts done, next and blocked in three lines.
+7. Make it fun (Majid, 2026-10-11 20:44 UTC+3): use emoji and reactions
+   whenever they fit, and pictures, sounds or videos when they make a point
+   clearer. React with `curl -sS --cacert /root/.ccr/ca-bundle.crt -H
+   'Content-Type: application/json' -d '{"channel":"C0C8GFKELQ4","timestamp":"<ts>","name":"tada"}'
+   https://slack.com/api/reactions.add`. Uploading files needs the `files:write`
+   scope, which the app does not have yet.
 
 ### Identities
 
