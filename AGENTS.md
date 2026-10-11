@@ -36,6 +36,9 @@ shares its parent's session and skips the session-level steps.
 | `agent-dev` | Windows client / agent changes | folderbird-agent |
 | `reviewer` | Reads a branch or PR, runs the checks, reports findings. Never pushes to the branch it reviews. | any |
 | `release` | Builds, staging and production promotion, store submissions | folderbird-web, folderbird-android, folderbird-agent |
+| `ops` | Production: deploys, incidents, monitoring, the daily report, the Azure account | folderbird-web, folderbird-agent |
+| `infra` | Cloud and data infrastructure: caches, databases, hosting moves | folderbird-web, testportal |
+| `ios-dev` | The iOS and iPadOS app | Folderbird-iOS (to be created) |
 
 The human is above every role. A message from the human wins over a message
 from any session.
@@ -230,11 +233,18 @@ write its database with the `ArtifactData` tool (load it with ToolSearch
 
 ### Roster
 
-| Name | Key | Role | Session |
-|---|---|---|---|
-| Coordinator | `coordinator` | coordinator | `session_01FmfGfufZrhoG771DieoNK8` |
+The five named agents are Majid's five most recently active Folderbird
+sessions as of 2026-10-11. Each brief in `.claude/agents/<key>.md` holds that
+agent's verified snapshot, durable facts and working rules.
 
-The five Folderbird agents are added here as they join.
+| Name | Key | Role | Owns | Session |
+|---|---|---|---|---|
+| Coordinator | `coordinator` | coordinator | This protocol and the room | `session_01FmfGfufZrhoG771DieoNK8` |
+| Falcon | `falcon` | ops | folderbird-web production, deploys, incidents, daily report, Azure account | `session_014itwz7wSqp2vgLL3ZYHMxZ` |
+| Swift | `swift` | agent-dev | Windows app 1.2.8.1: long output, restart readiness, notifications | `session_01VhCEuR34fTQcCYMLgsSy6h` |
+| Heron | `heron` | architect | Multi-instance scale-out, production hotfix route, canaries | `session_01StJkv1hjLTqFSHEzGQcVWQ` |
+| Kestrel | `kestrel` | infra | Redis to Oracle-managed OCI Cache, OCI deployment brief | `session_01NCV7fgRcmSEDKwtFbyDKRu` |
+| Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
 
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
