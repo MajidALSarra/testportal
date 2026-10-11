@@ -1,0 +1,724 @@
+<title>Folderbird Team Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen chat. Phone: header, agent strip, "waiting on you", feed, composer stacked.
+   Wide (>=900px): agents and "waiting on you" in a left rail, feed and composer on the right. */
+:root{
+  --bg:#F2F5F7; --surface:#FFFFFF; --surface-2:#E6ECF0; --line:#D2DCE3;
+  --fg:#13202A; --muted:#566775; --accent:#0A6C8C; --accent-ink:#FFFFFF; --accent-soft:#D5EBF2;
+  --warn:#8F5300; --warn-soft:#FBEACB; --bad:#B42318; --bad-soft:#FBE2DF; --good:#1D734A; --good-soft:#DAF0E3;
+  --avatar-ink:#FFFFFF; --scrim:rgba(10,20,28,.38); --shadow:0 -10px 32px rgba(10,20,28,.18);
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D151C; --surface:#14202A; --surface-2:#1B2A36; --line:#293A47;
+    --fg:#E3EBF1; --muted:#90A2B0; --accent:#52B7D7; --accent-ink:#062530; --accent-soft:#12384A;
+    --warn:#F0B354; --warn-soft:#3A2A0F; --bad:#F38A7F; --bad-soft:#3E1B18; --good:#6DCE9C; --good-soft:#113423;
+    --scrim:rgba(0,0,0,.55); --shadow:0 -10px 32px rgba(0,0,0,.5); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D151C; --surface:#14202A; --surface-2:#1B2A36; --line:#293A47;
+  --fg:#E3EBF1; --muted:#90A2B0; --accent:#52B7D7; --accent-ink:#062530; --accent-soft:#12384A;
+  --warn:#F0B354; --warn-soft:#3A2A0F; --bad:#F38A7F; --bad-soft:#3E1B18; --good:#6DCE9C; --good-soft:#113423;
+  --scrim:rgba(0,0,0,.55); --shadow:0 -10px 32px rgba(0,0,0,.5); color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.top h1{margin:0;font:700 1.12rem/1.15 var(--f-display);letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+.side{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:10px 16px;min-width:0;border-bottom:1px solid var(--line)}
+.side > *{min-width:0}
+.label{margin:0 0 8px;display:flex;align-items:center;gap:8px;font:600 .7rem/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.count{font:600 .7rem/1 var(--f-mono);letter-spacing:0;padding:3px 6px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.count:empty{display:none}
+
+.roster{list-style:none;margin:0;padding:0 0 2px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin}
+.agent-btn{display:flex;align-items:center;gap:10px;min-width:0;padding:7px 12px 7px 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);text-align:left;cursor:pointer;white-space:nowrap}
+.agent-btn:hover{border-color:var(--accent)}
+.agent-meta{display:grid;min-width:0}
+.agent-name{font-weight:600;line-height:1.2}
+.agent-state{font-size:.74rem;color:var(--muted);line-height:1.2}
+.agent-state.working{color:var(--accent)} .agent-state.blocked{color:var(--warn)} .agent-state.failed{color:var(--bad)}
+.agent-role{display:none}
+
+.avatar{position:relative;flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--muted);color:var(--avatar-ink);font:700 .92rem/1 var(--f-display)}
+.avatar.human{background:var(--fg);color:var(--bg)}
+.dot{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);background:var(--line)}
+.dot.working{background:var(--accent);animation:pulse 1.8s ease-in-out infinite}
+.dot.blocked{background:var(--warn)} .dot.failed{background:var(--bad)} .dot.idle{background:var(--muted)}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.dot.working{animation:none}}
+
+.needs summary{list-style:none;cursor:pointer}
+.needs summary::-webkit-details-marker{display:none}
+.needs summary .label{margin:0}
+.needs summary .label::after{content:"Show";margin-left:auto;font-weight:500;letter-spacing:.02em;text-transform:none;color:var(--accent)}
+.needs[open] summary .label::after{content:"Hide"}
+.needs-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;max-height:34vh;overflow-y:auto}
+.need{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px;border-radius:var(--r);background:var(--warn-soft)}
+.need .avatar{width:28px;height:28px;font-size:.8rem}
+.need-head{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.need-text{margin:2px 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.need-actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty{margin:0;color:var(--muted);font-size:.85rem}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 10px;font-size:.82rem;font-weight:500;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.55;cursor:default}
+a.btn{display:inline-flex;align-items:center;color:var(--fg);text-decoration:none}
+.link{border:0;background:none;padding:0;color:var(--accent);font-size:inherit;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+.chat{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;min-width:0}
+.feed{overflow-y:auto;padding:8px 16px 12px;display:flex;flex-direction:column;overscroll-behavior:contain}
+.day{align-self:center;margin:14px 0 6px;padding:3px 10px;border-radius:999px;background:var(--surface-2);color:var(--muted);font:500 .72rem/1.3 var(--f-body)}
+.msg{display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;padding:8px 0 2px}
+.msg.cont{padding-top:0}
+.avatar-gap{width:32px}
+.body{min-width:0}
+.msg.mine .body{background:var(--accent-soft);border-radius:4px var(--r) var(--r) var(--r);padding:6px 10px}
+.msg.mine.cont .body{border-radius:var(--r)}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.name{font-weight:600}
+.role{color:var(--muted);font-size:.78rem}
+.time{color:var(--muted);font:400 .72rem/1 var(--f-mono)}
+.head .link{margin-left:auto;font-size:.78rem}
+.badge{font:600 .64rem/1 var(--f-body);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px;border-radius:4px;background:var(--surface-2);color:var(--muted)}
+.badge.done{background:var(--good-soft);color:var(--good)}
+.badge.blocked,.badge.question{background:var(--warn-soft);color:var(--warn)}
+.badge.online{background:var(--accent-soft);color:var(--accent)}
+.text{margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere}
+.text code,.ref{font:.84em/1.3 var(--f-mono);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.text a{color:var(--accent)}
+.mention{color:var(--accent);font-weight:600}
+.quote{margin:2px 0;padding-left:8px;border-left:2px solid var(--line);color:var(--muted);font-size:.84rem;overflow-wrap:anywhere}
+.refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.delivery{margin-top:4px;color:var(--muted);font-size:.76rem;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.delivery .bad{color:var(--bad)}
+.q-state{margin-top:6px;font-size:.76rem;font-weight:600;color:var(--warn)}
+.q-state.done{color:var(--good)}
+.empty-feed{margin:auto;max-width:34ch;text-align:center;padding:32px 0;display:grid;gap:6px}
+.empty-title{margin:0;font:600 1rem/1.3 var(--f-display)}
+
+.composer{display:grid;gap:8px;padding:10px 16px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.to{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px;font-size:.8rem;font-weight:500;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.replying{display:flex;gap:8px;align-items:baseline;font-size:.8rem;color:var(--muted);min-width:0}
+.replying span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.row{display:flex;gap:8px;align-items:flex-end}
+#msg{flex:1;min-width:0;resize:none;max-height:40vh;border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;font:inherit;line-height:1.4;background:var(--bg);color:var(--fg)}
+#msg:disabled{opacity:.6}
+#send{padding:9px 16px;font-size:.92rem}
+.hint{margin:0;color:var(--muted);font-size:.76rem;min-height:1em}
+.hint.bad{color:var(--bad)}
+
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;max-height:82%;overflow-y:auto;margin:0 auto;max-width:560px;background:var(--surface);border-radius:16px 16px 0 0;box-shadow:var(--shadow);padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:12px}
+.sheet-head{display:flex;gap:12px;align-items:center}
+.sheet-head .avatar{width:44px;height:44px;font-size:1.2rem}
+.sheet h2{margin:0;font:700 1.2rem/1.2 var(--f-display)}
+.sheet .role{font-size:.85rem}
+.sheet p{margin:0}
+.facts{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:.86rem}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.facts .mono{white-space:pre-line}
+.mono{font-family:var(--f-mono);font-size:.8rem}
+.sheet-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+@media (min-width:900px){
+  .app{grid-template-columns:300px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .top{grid-column:1 / -1}
+  .side{grid-row:2;align-content:start;overflow-y:auto;border-bottom:0;border-right:1px solid var(--line);padding:14px 16px}
+  .chat{grid-row:2}
+  .roster{flex-direction:column;overflow:visible}
+  .agent-btn{width:100%;white-space:normal}
+  .agent-role{display:block;font-size:.74rem;color:var(--muted);line-height:1.25}
+  .needs-list{max-height:none}
+  .feed{padding:12px 28px}
+  .composer{padding:12px 28px 14px}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Folderbird Team Room</h1>
+      <p class="sub" id="sub">Connecting to the room…</p>
+    </div>
+  </header>
+
+  <aside class="side" aria-label="Team">
+    <section>
+      <h2 class="label">Agents</h2>
+      <ul class="roster" id="roster"></ul>
+      <p class="empty" id="roster-empty">The coordinator registers each agent here with its name, role and session.</p>
+      <p class="hint" id="live-hint" hidden></p>
+    </section>
+    <details class="needs" id="needs-wrap">
+      <summary><h2 class="label">Waiting on you <span class="count" id="needs-count"></span></h2></summary>
+      <ul class="needs-list" id="needs"></ul>
+      <p class="empty" id="needs-empty">Nothing is waiting on you.</p>
+    </details>
+  </aside>
+
+  <main class="chat">
+    <div class="feed" id="feed" role="log" aria-live="polite" aria-label="Messages"></div>
+    <form class="composer" id="composer" autocomplete="off">
+      <div class="to" id="to" role="group" aria-label="Who to wake"></div>
+      <div class="replying" id="replying" hidden><span id="replying-text"></span><button type="button" class="link" id="reply-cancel">Cancel</button></div>
+      <div class="row">
+        <label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Message</label>
+        <textarea id="msg" rows="2" maxlength="4000" placeholder="Message the team. Type @name to wake one agent."></textarea>
+        <button class="btn primary" id="send" type="submit">Send</button>
+      </div>
+      <p class="hint" id="hint"></p>
+    </form>
+  </main>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sheet-name"></section>
+
+<script>
+(function () {
+  "use strict";
+  var HUMAN_KEY = "majid";
+  var HUMAN_NAME = "Majid";
+  var REMOTE = "Claude Code Remote";
+  var KIND_LABEL = { online: "Online", progress: "Progress", done: "Done", blocked: "Blocked", question: "Question" };
+  var BUCKET = {
+    working: ["working", "Working"],
+    blocked: ["blocked", "Waiting on you"],
+    review_ready: ["idle", "Idle"],
+    completed: ["idle", "Idle"],
+    failed: ["failed", "Stopped"]
+  };
+  var AUTH_CODES = ["not_in_manifest", "approval_required", "consent_required", "needs_reauth", "server_not_connected",
+    "selection_required", "not_granted", "capability_disabled", "capability_removed", "blocked_by_policy"];
+
+  var S = {
+    db: null, mcp: null, user: null, perms: null,
+    isOwner: false, canPost: true, roomUrl: "",
+    agents: new Map(), messages: [], byId: new Map(),
+    live: new Map(), watches: new Map(),
+    selected: new Set(["all"]), touchedTo: false, mentionSeen: new Set(),
+    replyTo: null, openAgent: null, sending: false, pending: new Set(), stick: true, liveBlocked: null
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function h(tag, props) {
+    var n = document.createElement(tag);
+    if (props) Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (v == null || v === false) return;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : String(v));
+    });
+    for (var i = 2; i < arguments.length; i++) append(n, arguments[i]);
+    return n;
+  }
+  function append(n, c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { append(n, x); }); return; }
+    n.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+
+  /* ---------- text ---------- */
+  function richText(str) {
+    var frag = document.createDocumentFragment();
+    var re = /(`[^`\n]+`)|(https:\/\/[^\s<>"'\]]+)|(@[a-z][a-z0-9_-]{1,30})/gi;
+    var last = 0, m;
+    while ((m = re.exec(str))) {
+      if (m.index > last) frag.append(document.createTextNode(str.slice(last, m.index)));
+      if (m[1]) frag.append(h("code", { text: m[1].slice(1, -1) }));
+      else if (m[2]) {
+        var url = m[2], trail = url.match(/[.,;:!?)]+$/);
+        if (trail) { url = url.slice(0, -trail[0].length); re.lastIndex -= trail[0].length; }
+        frag.append(h("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: url }));
+      } else {
+        var key = m[3].slice(1).toLowerCase();
+        var known = S.agents.has(key) || key === "all" || key === "everyone" || key === HUMAN_KEY;
+        frag.append(known ? h("span", { class: "mention", text: m[3] }) : document.createTextNode(m[3]));
+      }
+      last = re.lastIndex;
+    }
+    if (last < str.length) frag.append(document.createTextNode(str.slice(last)));
+    return frag;
+  }
+  var fmtTime = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+  var fmtDay = new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric", month: "short" });
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function dayLabel(d) {
+    var t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+    return sameDay(d, t) ? "Today" : sameDay(d, y) ? "Yesterday" : fmtDay.format(d);
+  }
+  function ago(ms) {
+    var s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+    if (s < 90) return "just now";
+    var m = Math.round(s / 60); if (m < 60) return m + " min ago";
+    var hr = Math.round(m / 60); if (hr < 36) return hr + " h ago";
+    return Math.round(hr / 24) + " d ago";
+  }
+
+  /* ---------- people ---------- */
+  function agentName(key) {
+    if (key === HUMAN_KEY) return HUMAN_NAME;
+    var a = S.agents.get(key); return a ? (a.name || key) : key;
+  }
+  function names(keys) { return keys.map(agentName).join(", "); }
+  function sender(m) {
+    var k = String(m.from || "").toLowerCase();
+    if (k === HUMAN_KEY) return { key: k, name: S.isOwner ? "You" : HUMAN_NAME, role: "", color: null, human: true };
+    var a = S.agents.get(k);
+    if (a) return { key: k, name: a.name || k, role: a.role_title || a.role || "", color: a.color || null };
+    return { key: k, name: m.from ? String(m.from) : "Unknown", role: "", color: null };
+  }
+  function avatar(s, dotCls) {
+    var initial = s.human ? HUMAN_NAME.charAt(0) : String(s.name || "?").trim().charAt(0).toUpperCase();
+    var a = h("span", { class: "avatar" + (s.human ? " human" : ""), "aria-hidden": "true" }, initial);
+    if (s.color && /^#[0-9a-f]{3,8}$/i.test(s.color)) a.style.background = s.color;
+    if (dotCls) a.append(h("span", { class: "dot " + dotCls }));
+    return a;
+  }
+
+  /* ---------- live session status ---------- */
+  function parseSession(p) {
+    var o = p;
+    if (typeof o === "string") {
+      var i = o.indexOf("{"), j = o.lastIndexOf("}");
+      if (i < 0 || j < i) return null;
+      try { o = JSON.parse(o.slice(i, j + 1)); } catch (e) { return null; }
+    }
+    var s = o && (o.ccr || o);
+    if (!s || typeof s !== "object") return null;
+    var em = s.external_metadata || {};
+    var pts = s.post_turn_summary || em.post_turn_summary || {};
+    return {
+      bucket: String(s.status_bucket || "").replace("SESSION_STATUS_BUCKET_", "").toLowerCase(),
+      task: s.task_summary || em.task_summary || "",
+      detail: pts.status_detail || "",
+      needs: pts.needs_action || "",
+      updated: s.updated_at || ""
+    };
+  }
+  function statusOf(key) {
+    var l = S.live.get(key);
+    if (!l) return { cls: "unknown", label: S.mcp ? "Checking…" : "Status not shown here" };
+    if (l.error) return { cls: "unknown", label: "Status off" };
+    var b = BUCKET[l.bucket] || ["unknown", "Unknown"];
+    return { cls: b[0], label: b[1] };
+  }
+  function syncWatches() {
+    if (!S.mcp) return;
+    S.agents.forEach(function (a, key) {
+      var cur = S.watches.get(key), sid = a.session_id || "";
+      if (cur && cur.sid === sid) return;
+      if (cur) cur.unsub();
+      if (!sid) { S.watches.delete(key); return; }
+      var unsub = S.mcp.watchTool(REMOTE, "get_session", { session_id: sid }, function (ev) {
+        if (ev.type === "data") {
+          var r = ev.result || {};
+          var first = r.content && r.content[0] && r.content[0].text;
+          var p = parseSession(r.payload != null ? r.payload : first);
+          if (p) { p.at = (r.cache && r.cache.storedAt) || Date.now(); S.live.set(key, p); }
+          S.liveBlocked = null;
+        } else {
+          var code = ev.error && ev.error.code;
+          if (AUTH_CODES.indexOf(code) >= 0) { S.live.set(key, { error: code }); S.liveBlocked = code; }
+          else if (!S.live.get(key)) S.live.set(key, { error: code || "upstream_error" });
+        }
+        renderRoster(); renderSheet(); renderSub();
+      }, { refetchInterval: 60000 });
+      S.watches.set(key, { sid: sid, unsub: unsub });
+    });
+    Array.from(S.watches.keys()).forEach(function (key) {
+      if (!S.agents.has(key)) { S.watches.get(key).unsub(); S.watches.delete(key); S.live.delete(key); }
+    });
+  }
+  function restartWatches() {
+    S.watches.forEach(function (w) { w.unsub(); });
+    S.watches.clear(); S.live.clear(); S.liveBlocked = null;
+    syncWatches(); renderRoster();
+  }
+  function allowRemote() {
+    if (!S.perms) return;
+    S.perms.request(["mcp:" + REMOTE]).then(function () { restartWatches(); }, function () {});
+  }
+  function remoteFix(code) {
+    if (code === "needs_reauth") return "Reconnect Claude Code Remote in claude.ai Settings, then Connectors.";
+    if (code === "server_not_connected" || code === "selection_required") return "Claude Code Remote isn't available to this page for your account.";
+    if (code === "blocked_by_policy") return "Your organization's policy blocks Claude Code Remote here.";
+    if (code === "not_granted" || code === "capability_disabled" || code === "capability_removed") return "This view can't reach your sessions. Open the room in the Claude app or claude.ai.";
+    return "Allow Claude Code Remote for this page to see live status and wake agents.";
+  }
+
+  /* ---------- render: header ---------- */
+  function renderSub() {
+    if (!S.db) return;
+    var n = S.agents.size, working = 0, waiting = 0;
+    S.agents.forEach(function (a, key) { var st = statusOf(key).cls; if (st === "working") working++; if (st === "blocked") waiting++; });
+    var open = S.messages.filter(isOpenQuestion).length;
+    var parts = [n + (n === 1 ? " agent" : " agents")];
+    if (working) parts.push(working + " working");
+    if (waiting) parts.push(waiting + " waiting on you");
+    if (open) parts.push(open + (open === 1 ? " open question" : " open questions"));
+    $("sub").textContent = parts.join(" · ");
+  }
+
+  /* ---------- render: roster ---------- */
+  function renderRoster() {
+    var ul = $("roster"); ul.replaceChildren();
+    $("roster-empty").hidden = S.agents.size > 0;
+    S.agents.forEach(function (a, key) {
+      var st = statusOf(key);
+      var s = { name: a.name || key, color: a.color };
+      ul.append(h("li", null, h("button", { type: "button", class: "agent-btn", onclick: function () { openAgent(key); },
+        "aria-label": (a.name || key) + ", " + st.label },
+        avatar(s, st.cls),
+        h("span", { class: "agent-meta" },
+          h("span", { class: "agent-name", text: a.name || key }),
+          h("span", { class: "agent-role", text: a.role_title || a.role || "" }),
+          h("span", { class: "agent-state " + st.cls, text: st.label })))));
+    });
+    var lh = $("live-hint");
+    if (S.liveBlocked) {
+      lh.hidden = false; lh.replaceChildren(remoteFix(S.liveBlocked) + " ");
+      if (S.perms && ["not_in_manifest", "approval_required", "consent_required"].indexOf(S.liveBlocked) >= 0)
+        lh.append(h("button", { type: "button", class: "link", onclick: allowRemote, text: "Allow" }));
+    } else if (S.db && !S.mcp && S.agents.size) {
+      lh.hidden = false; lh.textContent = "Live status and wake-ups need the Claude app or claude.ai. Messages still save.";
+    } else lh.hidden = true;
+  }
+
+  /* ---------- render: waiting on you ---------- */
+  function isOpenQuestion(m) { return (m.kind === "question" || m.kind === "blocked") && !m.resolved && String(m.from || "").toLowerCase() !== HUMAN_KEY; }
+  var needsOpenedOnce = false;
+  function renderNeeds() {
+    var items = S.messages.filter(isOpenQuestion).slice().reverse();
+    var ul = $("needs"); ul.replaceChildren();
+    $("needs-count").textContent = items.length ? String(items.length) : "";
+    $("needs-empty").hidden = items.length > 0;
+    if (!needsOpenedOnce && items.length && window.matchMedia("(min-width: 900px)").matches) { $("needs-wrap").open = true; needsOpenedOnce = true; }
+    items.forEach(function (m) {
+      var s = sender(m), d = new Date(m.ts);
+      ul.append(h("li", { class: "need" }, avatar(s),
+        h("div", { style: "min-width:0" },
+          h("div", { class: "need-head" }, h("span", { class: "name", text: s.name }),
+            h("span", { class: "badge " + m.kind, text: KIND_LABEL[m.kind] }),
+            isNaN(d) ? null : h("time", { class: "time", datetime: m.ts, text: dayLabel(d) + " " + fmtTime.format(d) })),
+          h("p", { class: "need-text", text: String(m.text || "") }),
+          h("div", { class: "need-actions" },
+            h("button", { type: "button", class: "btn", onclick: function () { startReply(m); }, text: "Reply" }),
+            h("button", { type: "button", class: "btn", disabled: !S.canPost, onclick: function (e) { markAnswered(m, e.currentTarget); }, text: "Mark answered" }),
+            h("button", { type: "button", class: "link", onclick: function () { jumpTo(m.id); }, text: "Show in chat" })))));
+    });
+  }
+  function markAnswered(m, btn) {
+    if (!S.db) return;
+    btn.disabled = true;
+    S.db.collection("messages").doc(m.id).update({ resolved: true, resolved_by: HUMAN_KEY, resolved_at: new Date().toISOString() })
+      .catch(function (e) { btn.disabled = false; hint(dbErr(e), true); });
+  }
+  function jumpTo(id) {
+    var n = document.getElementById("m-" + id);
+    if (n) n.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
+  /* ---------- render: feed ---------- */
+  function renderFeed() {
+    var feed = $("feed");
+    var nearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 120;
+    feed.replaceChildren();
+    if (!S.messages.length) {
+      feed.append(h("div", { class: "empty-feed" },
+        h("p", { class: "empty-title", text: S.db ? "No messages yet" : "Connecting…" }),
+        h("p", { class: "empty", text: S.db
+          ? "Agents post their status here when they come online. Say hello to everyone, or tap an agent to message just that one."
+          : "The room's messages load when this page opens inside claude.ai or the Claude app." })));
+      return;
+    }
+    var prev = null, prevDay = "";
+    S.messages.forEach(function (m) {
+      var d = new Date(m.ts), valid = !isNaN(d), day = valid ? dayLabel(d) : "";
+      if (day && day !== prevDay) { feed.append(h("div", { class: "day", role: "separator", text: day })); prevDay = day; prev = null; }
+      var s = sender(m), kind = KIND_LABEL[m.kind] ? m.kind : "chat";
+      var cont = !!(prev && prev.from === m.from && kind === "chat" && !KIND_LABEL[prev.kind] && valid &&
+        (d - new Date(prev.ts)) < 5 * 60 * 1000 && !m.reply_to);
+      feed.append(renderMsg(m, s, kind, cont, valid ? d : null));
+      prev = m;
+    });
+    if (nearBottom || S.stick) feed.scrollTop = feed.scrollHeight;
+    S.stick = false;
+  }
+  function renderMsg(m, s, kind, cont, d) {
+    var body = h("div", { class: "body" });
+    if (!cont) body.append(h("div", { class: "head" },
+      h("span", { class: "name", text: s.name }),
+      s.role ? h("span", { class: "role", text: s.role }) : null,
+      kind !== "chat" ? h("span", { class: "badge " + kind, text: KIND_LABEL[kind] }) : null,
+      d ? h("time", { class: "time", datetime: m.ts, text: fmtTime.format(d) }) : null,
+      (!s.human && S.agents.has(s.key) && S.canPost) ? h("button", { type: "button", class: "link", onclick: function () { startReply(m); }, text: "Reply" }) : null));
+    if (m.reply_to) {
+      var r = S.byId.get(m.reply_to);
+      if (r) {
+        var rt = String(r.text || "");
+        body.append(h("div", { class: "quote" }, h("strong", { text: sender(r).name + ": " }), rt.slice(0, 140) + (rt.length > 140 ? "…" : "")));
+      }
+    }
+    var t = h("div", { class: "text" }); t.append(richText(String(m.text || ""))); body.append(t);
+    if (Array.isArray(m.refs) && m.refs.length)
+      body.append(h("div", { class: "refs" }, m.refs.slice(0, 10).map(function (x) { return h("span", { class: "ref", text: String(x) }); })));
+    if (s.human) body.append(deliveryLine(m));
+    if (kind === "question" || kind === "blocked")
+      body.append(h("div", { class: "q-state" + (m.resolved ? " done" : ""), text: m.resolved ? "Answered" : "Waiting on you" }));
+    return h("article", { class: "msg" + (cont ? " cont" : "") + (s.human ? " mine" : ""), id: "m-" + m.id },
+      cont ? h("span", { class: "avatar-gap" }) : avatar(s), body);
+  }
+  function reason(code) {
+    switch (code) {
+      case "not_in_manifest": case "approval_required": case "consent_required": return "Claude Code Remote isn't allowed for this page yet";
+      case "needs_reauth": return "reconnect Claude Code Remote in Settings";
+      case "server_not_connected": case "selection_required": return "Claude Code Remote isn't available here";
+      case "tool_error": return "the session service refused it";
+      case "no_session": return "no session is linked to this agent";
+      case "no_mcp": return "wake-ups need the Claude app or claude.ai";
+      case "cancelled": return "cancelled";
+      default: return "the session service didn't answer";
+    }
+  }
+  function deliveryLine(m) {
+    var to = Array.isArray(m.to) ? m.to : [];
+    var dv = m.delivery;
+    if (!dv || typeof dv !== "object") {
+      if (!to.length) return h("div", { class: "delivery", text: "Saved to the room. No one was woken." });
+      return h("div", { class: "delivery", text: S.pending.has(m.id) ? "Waking " + names(to) + "…" : "Agents weren't woken" });
+    }
+    var ok = [], bad = [];
+    Object.keys(dv).forEach(function (k) { (dv[k] && dv[k].ok ? ok : bad).push(k); });
+    var line = h("div", { class: "delivery" });
+    if (ok.length) line.append(h("span", { text: "Woke " + names(ok) }));
+    if (bad.length) {
+      line.append(h("span", { class: "bad", text: "Not delivered to " + names(bad) + ": " + reason(dv[bad[0]] && dv[bad[0]].code) }));
+      if (S.canPost && S.mcp) line.append(h("button", { type: "button", class: "link", onclick: function (e) { retry(m, bad, e.currentTarget); }, text: "Try again" }));
+      var c = dv[bad[0]] && dv[bad[0]].code;
+      if (S.perms && ["not_in_manifest", "approval_required", "consent_required"].indexOf(c) >= 0)
+        line.append(h("button", { type: "button", class: "link", onclick: allowRemote, text: "Allow" }));
+    }
+    return line;
+  }
+
+  /* ---------- composer ---------- */
+  function renderTo() {
+    var wrap = $("to"); wrap.replaceChildren();
+    function chip(key, label) {
+      wrap.append(h("button", { type: "button", class: "chip", "aria-pressed": S.selected.has(key) ? "true" : "false",
+        onclick: function () { toggle(key); }, text: label }));
+    }
+    chip("all", "Everyone");
+    S.agents.forEach(function (a, key) { chip(key, a.name || key); });
+    var targets = resolveTargets();
+    var msg = !S.mcp ? "Saved to the room. Wake-ups need the Claude app or claude.ai."
+      : !targets.length ? "Saved to the room only. No one is woken."
+      : S.selected.has("all") ? "Wakes everyone. Busy agents read it when their current step ends."
+      : "Wakes " + names(targets) + ". A busy agent reads it when its current step ends.";
+    if (!$("hint").classList.contains("bad")) $("hint").textContent = msg;
+  }
+  function toggle(key) {
+    S.touchedTo = true;
+    if (key === "all") S.selected = S.selected.has("all") ? new Set() : new Set(["all"]);
+    else { S.selected.delete("all"); if (S.selected.has(key)) S.selected.delete(key); else S.selected.add(key); }
+    clearHint(); renderTo();
+  }
+  function resolveTargets() {
+    var out = [];
+    if (S.selected.has("all")) { S.agents.forEach(function (a, key) { if (a.session_id) out.push(key); }); return out; }
+    S.selected.forEach(function (key) { if (S.agents.has(key)) out.push(key); });
+    return out;
+  }
+  function onInput() {
+    var ta = $("msg");
+    ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, Math.round(window.innerHeight * 0.4)) + "px";
+    saveDraft(ta.value);
+    var re = /@([a-z][a-z0-9_-]{1,30})/gi, m;
+    while ((m = re.exec(ta.value))) {
+      var k = m[1].toLowerCase();
+      if (S.mentionSeen.has(k)) continue;
+      if (k === "everyone" || k === "all") { S.selected = new Set(["all"]); S.mentionSeen.add(k); }
+      else if (S.agents.has(k)) {
+        if (S.selected.has("all") && !S.touchedTo) S.selected.clear();
+        S.selected.delete("all"); S.selected.add(k); S.mentionSeen.add(k);
+      }
+    }
+    renderTo();
+  }
+  function startReply(m) {
+    S.replyTo = m.id;
+    var s = sender(m);
+    $("replying").hidden = false;
+    $("replying-text").textContent = "Replying to " + s.name + ": " + String(m.text || "").slice(0, 120);
+    if (!s.human && S.agents.has(s.key)) { S.selected = new Set([s.key]); S.touchedTo = true; }
+    renderTo(); $("msg").focus();
+  }
+  function clearReply() { S.replyTo = null; $("replying").hidden = true; }
+  function hint(text, bad) { var n = $("hint"); n.textContent = text; n.classList.toggle("bad", !!bad); }
+  function clearHint() { $("hint").classList.remove("bad"); }
+  function dbErr(e) {
+    switch (e && e.code) {
+      case "quota_exceeded": return "The room is full. Ask the coordinator to archive old messages.";
+      case "revoked": return "Your access to this room changed. Reload the page.";
+      case "resource_exhausted": return "Too many changes at once. Wait a moment and try again.";
+      case "invalid_argument": return "That couldn't be saved. It may be too long.";
+      default: return "The room didn't answer. Try again in a moment.";
+    }
+  }
+  function setBusy(b) { $("send").disabled = b || !S.db || !S.canPost; $("msg").disabled = !S.db || !S.canPost; }
+  function wakeText(a, doc, targets, id) {
+    var others = targets.filter(function (k) { return k !== a.key; }).map(agentName);
+    var lines = ["[Folderbird team room] " + HUMAN_NAME + " wrote to " + a.name + (others.length ? " (also sent to " + others.join(", ") + ")" : "") + ":", "", doc.text];
+    if (doc.reply_to) {
+      var r = S.byId.get(doc.reply_to);
+      if (r) lines.push("", "(In reply to " + agentName(String(r.from || "").toLowerCase()) + ": \"" + String(r.text || "").slice(0, 240) + "\")");
+    }
+    lines.push("", "Message id: " + id,
+      "Answer in the team room as " + a.name + ": ArtifactData action \"set\" on " + (S.roomUrl || "the team room") +
+      ", collection \"messages\", with from \"" + a.key + "\" and reply_to \"" + id + "\". The Team room section of your brief has the format.");
+    return lines.join("\n");
+  }
+  function deliver(id, doc, targets) {
+    var res = {}, i = 0;
+    function next() {
+      if (i >= targets.length) return Promise.resolve(res);
+      var key = targets[i++], a = S.agents.get(key);
+      if (!S.mcp) { res[key] = { ok: false, code: "no_mcp" }; return next(); }
+      if (!a || !a.session_id) { res[key] = { ok: false, code: "no_session" }; return next(); }
+      return S.mcp.callTool(REMOTE, "send_message", { session_id: a.session_id, message: wakeText(a, doc, targets, id), priority: "later" })
+        .then(function () { res[key] = { ok: true }; return next(); },
+          function (e) {
+            var code = (e && e.code) || "upstream_error";
+            res[key] = { ok: false, code: code };
+            if (AUTH_CODES.indexOf(code) >= 0) { targets.forEach(function (k) { if (!res[k]) res[k] = { ok: false, code: code }; }); return res; }
+            return next();
+          });
+    }
+    return next();
+  }
+  function onSend(ev) {
+    ev.preventDefault();
+    if (S.sending || !S.db || !S.canPost) return;
+    var text = $("msg").value.trim();
+    if (!text) return;
+    var targets = resolveTargets();
+    var ts = new Date().toISOString();
+    var id = ts.replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z") + "-" + HUMAN_KEY + "-" + Math.random().toString(36).slice(2, 6);
+    var doc = { from: HUMAN_KEY, kind: "chat", text: text, ts: ts, to: targets };
+    if (S.replyTo) doc.reply_to = S.replyTo;
+    S.sending = true; setBusy(true); clearHint();
+    S.db.collection("messages").doc(id).set(doc).then(function () {
+      $("msg").value = ""; saveDraft(""); $("msg").style.height = "";
+      clearReply(); S.mentionSeen.clear(); S.stick = true;
+      if (!S.touchedTo) S.selected = new Set(["all"]);
+      S.sending = false; setBusy(false); renderTo();
+      if (!targets.length) return;
+      S.pending.add(id); renderFeed();
+      return deliver(id, doc, targets.slice()).then(function (res) {
+        return S.db.collection("messages").doc(id).update({ delivery: res });
+      }).catch(function () { hint("Sent, but the delivery note couldn't be saved.", true); })
+        .then(function () { S.pending.delete(id); renderFeed(); });
+    }, function (e) { S.sending = false; setBusy(false); hint(dbErr(e), true); });
+  }
+  function retry(m, keys, btn) {
+    btn.disabled = true;
+    deliver(m.id, m, keys.slice()).then(function (res) {
+      return S.db.collection("messages").doc(m.id).update({ delivery: res });
+    }).catch(function (e) { btn.disabled = false; hint(dbErr(e), true); });
+  }
+  function saveDraft(v) { try { localStorage.setItem("fb-room-draft", v); } catch (e) {} }
+  function loadDraft() { try { return localStorage.getItem("fb-room-draft") || ""; } catch (e) { return ""; } }
+
+  /* ---------- agent sheet ---------- */
+  function openAgent(key) { S.openAgent = key; renderSheet(); }
+  function closeAgent() { S.openAgent = null; renderSheet(); }
+  function renderSheet() {
+    var sheet = $("sheet"), scrim = $("scrim"), key = S.openAgent, a = key && S.agents.get(key);
+    if (!a) { sheet.hidden = true; scrim.hidden = true; return; }
+    var st = statusOf(key), l = S.live.get(key) || {};
+    var facts = h("dl", { class: "facts" });
+    function fact(k, v) { if (v) { facts.append(h("dt", { text: k })); facts.append(h("dd", null, v)); } }
+    fact("Status", st.label + (l.at ? " · checked " + ago(l.at) : ""));
+    fact("Doing", l.task || l.detail || a.status_text || "");
+    if (l.needs) fact("Needs", l.needs);
+    fact("Owns", a.headline || "");
+    if (Array.isArray(a.repos) && a.repos.length) fact("Repos", h("span", { class: "mono" }, a.repos.join("\n")));
+    fact("Session", a.session_id ? h("span", { class: "mono", text: a.session_id }) : "");
+    sheet.replaceChildren(
+      h("div", { class: "sheet-head" }, avatar({ name: a.name || key, color: a.color }, st.cls),
+        h("div", null, h("h2", { id: "sheet-name", text: a.name || key }), h("p", { class: "role", text: a.role_title || a.role || "" }))),
+      facts,
+      h("div", { class: "sheet-actions" },
+        h("button", { type: "button", class: "btn primary", disabled: !S.canPost, onclick: function () {
+          S.selected = new Set([key]); S.touchedTo = true; closeAgent(); renderTo(); $("msg").focus(); }, text: "Message " + (a.name || key) }),
+        a.session_id ? h("a", { class: "btn", href: "https://claude.ai/code/" + a.session_id, target: "_blank", rel: "noopener noreferrer", text: "Open session" }) : null,
+        h("button", { type: "button", class: "btn", onclick: closeAgent, text: "Close" })));
+    sheet.hidden = false; scrim.hidden = false;
+  }
+
+  /* ---------- boot ---------- */
+  function renderAll() { renderRoster(); renderTo(); renderFeed(); renderNeeds(); renderSub(); setBusy(S.sending); }
+  function use(name) {
+    try { return (window.claude && window.claude.use) ? window.claude.use(name).catch(function () { return null; }) : Promise.resolve(null); }
+    catch (e) { return Promise.resolve(null); }
+  }
+  function boot() {
+    $("composer").addEventListener("submit", onSend);
+    $("msg").addEventListener("input", onInput);
+    $("msg").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $("composer").requestSubmit(); } });
+    $("reply-cancel").addEventListener("click", clearReply);
+    $("scrim").addEventListener("click", closeAgent);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && S.openAgent) closeAgent(); });
+    $("msg").value = loadDraft();
+    renderAll();
+    Promise.all([use("db"), use("user"), use("mcp"), use("permissions")]).then(function (r) {
+      S.db = r[0]; S.user = r[1]; S.mcp = r[2]; S.perms = r[3];
+      var who = S.user ? Promise.all([S.user.isOwner(), S.user.can("data.write")]) : Promise.resolve([true, null]);
+      return who.then(function (w) { S.isOwner = !!w[0]; S.canPost = !!w[0] || w[1] !== false; });
+    }).then(function () {
+      if (!S.db) { $("sub").textContent = "Open this room in the Claude app or claude.ai"; renderAll(); return; }
+      S.db.doc("config/room").onSnapshot(function (snap) {
+        var d = snap.exists ? snap.data() : null; S.roomUrl = (d && typeof d.url === "string") ? d.url : "";
+      }, function () {});
+      S.db.collection("agents").onSnapshot(function (snap) {
+        var rows = snap.docs.filter(function (d) { return d.exists; }).map(function (d) {
+          var v = d.data() || {}; var o = {}; Object.keys(v).forEach(function (k) { o[k] = v[k]; }); o.key = d.id; return o;
+        });
+        rows.sort(function (a, b) { return (a.order == null ? 99 : a.order) - (b.order == null ? 99 : b.order); });
+        S.agents = new Map(rows.map(function (o) { return [o.key, o]; }));
+        syncWatches(); renderAll();
+      }, function (e) { hint(dbErr(e), true); });
+      S.db.collection("messages").orderBy("ts", "desc").limit(300).onSnapshot(function (snap) {
+        S.messages = snap.docs.filter(function (d) { return d.exists; }).map(function (d) {
+          var v = d.data() || {}; var o = { id: d.id }; Object.keys(v).forEach(function (k) { o[k] = v[k]; }); return o;
+        }).reverse();
+        S.byId = new Map(S.messages.map(function (m) { return [m.id, m]; }));
+        renderFeed(); renderNeeds(); renderSub();
+      }, function (e) { hint(dbErr(e), true); });
+      renderAll();
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+})();
+</script>
