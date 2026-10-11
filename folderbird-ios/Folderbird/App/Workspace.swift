@@ -133,10 +133,15 @@ final class BrowseModel: ObservableObject {
 
     // MARK: - Navigation
 
-    func landIfNeeded() async {
+    private var landing: Task<Void, Never>?
+
+    /// Model-owned: the landing must outlive BrowseView's `.task`, which SwiftUI cancels when the view disappears
+    /// (Back on the phone, another sidebar device on iPad). A cancelled landing used to leave the device stuck on
+    /// "Couldn't read the drives. Cancelled." with `landed` already true.
+    func landIfNeeded() {
         guard !landed else { return }
         landed = true
-        await land()
+        landing = Task { await self.land() }
     }
 
     /// On open, land on the user's home folder (like the website) — Documents, Pictures, Downloads, etc.
@@ -144,6 +149,7 @@ final class BrowseModel: ObservableObject {
     func land() async {
         loading = true; error = nil
         let sys = try? await api.system(deviceId)
+        if Task.isCancelled { landed = false; loading = false; return }   // try again on the next appearance
         if let s = sys { drives = s.disks.filter { !($0.drive ?? "").isEmpty } }
         if let home = await api.resolveHomeFolder(deviceId, system: sys) {
             await load(home)
@@ -159,7 +165,7 @@ final class BrowseModel: ObservableObject {
             let sys = try await api.system(deviceId)
             drives = sys.disks.filter { !($0.drive ?? "").isEmpty }
         } catch let e {
-            drivesError = errorMessage(e)
+            if !isCancellation(e) { drivesError = errorMessage(e) }
         }
         drivesLoading = false
     }
@@ -182,6 +188,7 @@ final class BrowseModel: ObservableObject {
             listing = r
         } catch let e {
             guard gen == loadGeneration else { return }
+            if isCancellation(e) { loading = false; return }   // the caller went away; keep what was on screen
             error = errorMessage(e); listing = nil
         }
         loading = false
@@ -218,6 +225,7 @@ final class BrowseModel: ObservableObject {
             results = r.results
         } catch let e {
             guard gen == loadGeneration else { return }
+            if isCancellation(e) { searching = false; return }
             error = errorMessage(e)
         }
         searching = false

@@ -45,7 +45,7 @@ struct BrowseView: View {
                             previewFrac = min(0.92, max(0.35, previewFrac - delta / max(geo.size.height, 1)))
                         }
                         .id(f.path)
-                        .frame(height: geo.size.height * previewFrac)
+                        .frame(height: dockedPanelHeight(geo.size.height))
                     }
                 }
             }
@@ -94,11 +94,17 @@ struct BrowseView: View {
         .modifier(CompactRoutes(model: model, enabled: layout == .compact))
         .toast($model.toast)
         .onAppear { if layout == .compact { workspace.selectedDeviceId = model.deviceId } }
-        .task { await model.landIfNeeded() }
+        .task { model.landIfNeeded() }
     }
 
     private var savedPresented: Binding<Bool> {
         Binding(get: { model.saved != nil }, set: { if !$0 { model.saved = nil } })
+    }
+
+    /// By fraction, but never below the panel's fixed chrome (handle, header, action row ≈ 150pt): on a landscape
+    /// phone half the available height is less than that and the content area collapsed to nothing.
+    private func dockedPanelHeight(_ total: CGFloat) -> CGFloat {
+        max(total * previewFrac, min(total, 240))
     }
 
     @ToolbarContentBuilder

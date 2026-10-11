@@ -115,9 +115,10 @@ struct FileViewerView: View {
     }
 
     private func load() async {
-        // The model already holds this file's buffer (back from another device, a layout change, Quick Look):
-        // keep it — including unsaved edits — instead of fetching over it.
-        if isText, draft.path == file.path, reloadKey == 0 {
+        // The model holds this file's buffer WITH unsaved edits (a layout change, Quick Look): keep it instead of
+        // fetching over it. A clean buffer is re-read — the cache answers instantly when the file is unchanged, and
+        // Android's viewer fetches on every open too — so a file edited on the PC never shows stale text.
+        if isText, draft.path == file.path, draft.dirty, reloadKey == 0 {
             loading = false
             return
         }

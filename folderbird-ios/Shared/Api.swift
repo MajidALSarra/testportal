@@ -426,3 +426,11 @@ struct Api {
         return real.count == 1 ? real[0] : nil
     }
 }
+
+/// True for the errors a cancelled Task produces — SwiftUI cancels a view's `.task` when the view disappears.
+/// They describe the caller going away, not the server, and must never be shown as "Cancelled.".
+func isCancellation(_ e: Error) -> Bool {
+    if e is CancellationError { return true }
+    if let u = e as? URLError, u.code == .cancelled { return true }
+    return false
+}

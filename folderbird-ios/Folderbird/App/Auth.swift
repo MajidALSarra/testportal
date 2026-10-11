@@ -40,6 +40,9 @@ enum AuthManager {
     static func signIn(prefs: Prefs) async throws -> String {
         // A second tap must not replace the in-flight session (and its PKCE state) with a new one.
         guard live == nil else { throw ApiError.message("A sign-in is already in progress.") }
+        // Cleared on EVERY exit: a Cancel on the browser sheet throws out of the continuation below, and leaving
+        // the finished pair in `live` would refuse every later sign-in until the app was killed.
+        defer { live = nil }
         let verifier = Pkce.newVerifier()
         let state = Pkce.newState()
         let redirect = redirectUri(prefs)
@@ -76,7 +79,6 @@ enum AuthManager {
                 cont.resume(throwing: ApiError.message("Couldn't open the sign-in page."))
             }
         }
-        live = nil
         return try await handleCallback(prefs: prefs, url: callback)
     }
 

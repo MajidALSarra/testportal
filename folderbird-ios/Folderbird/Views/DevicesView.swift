@@ -67,13 +67,14 @@ struct DevicesView: View {
         .sheet(isPresented: $showAdd) { AddDeviceSheet() }
         .sheet(isPresented: $showSettings) { NavigationStack { SettingsView(inSheet: true) } }
         .sheet(item: $safari) { SafariView(url: $0.url) }
+        // Runs on every appearance, so Back from the browser / console on the phone refreshes the statuses as
+        // Android does on each show; SwiftUI cancels it on disappear, which reload() treats as "never mind".
         .task { await reload() }
-        // Back from the browser / console on the phone: refresh the statuses, as Android does on each show.
-        .onAppear {
-            if appeared && mode == .list { Task { await reload() } }
-            appeared = true
-        }
         .toast($toast)
+        // The phone-route console is over once its route pops; see openConsole.
+        .onChange(of: path.count) { _, n in
+            if n == 0, mode == .list, let d = workspace.selectedDevice { workspace.model(for: d).consoleOpen = false }
+        }
     }
 
     // MARK: - Lists
@@ -156,10 +157,18 @@ struct DevicesView: View {
     // MARK: - Actions
 
     private func reload() async {
+        // Reloads overlap (appearance, pull-to-refresh, the toolbar button): only the newest one writes state.
+        reloadGen += 1
+        let g = reloadGen
         loading = true; error = nil
         do {
-            workspace.devices = try await Api(prefs).devices()
+            let list = try await Api(prefs).devices()
+            guard g == reloadGen else { return }
+            workspace.devices = list
         } catch let e {
+            guard g == reloadGen else { return }
+            // A cancelled Task (the list disappeared mid-refresh) is not a network failure: say nothing.
+            if isCancellation(e) { loading = false; return }
             error = errorMessage(e)
             // A failed refresh with a list already on screen keeps the list but says so.
             if !workspace.devices.isEmpty { toast = "Couldn't refresh devices: \(errorMessage(e))" }
@@ -175,6 +184,9 @@ struct DevicesView: View {
     private func openConsole(_ d: Device) {
         workspace.selectedDeviceId = d.idStr
         if mode == .list {
+            // The model's flag stays the single truth, so an iPad window widened across the compact→regular
+            // boundary shows this console in the detail column instead of dropping it; cleared when the route pops.
+            workspace.model(for: d).consoleOpen = true
             path.append(DeviceRoute.console(d))        // Back returns to this list, not to a folder listing
         } else {
             workspace.model(for: d).openConsole()      // iPad: the detail column (asks before dropping edits)
