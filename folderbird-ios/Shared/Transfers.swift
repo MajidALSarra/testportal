@@ -113,6 +113,10 @@ private final class TaskHolder: @unchecked Sendable {
 }
 
 private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.sanitized(request, from: task))
+    }
     let dest: URL
     let hadKey: Bool
     let progress: (@MainActor (Double?) -> Void)?
@@ -161,6 +165,10 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
 }
 
 private final class UploadDelegate: NSObject, URLSessionDataDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.sanitized(request, from: task))
+    }
     let hadKey: Bool
     let progress: (@MainActor (Double) -> Void)?
     var continuation: CheckedContinuation<Void, Error>?

@@ -42,7 +42,10 @@ struct BrowseView: View {
                     // tappable while a preview is open below it. Drag the handle to resize.
                     if layout == .compact, let f = model.previewing {
                         PreviewPanel(model: model, file: f, docked: true) { delta in
-                            previewFrac = min(0.92, max(0.35, previewFrac - delta / max(geo.size.height, 1)))
+                            let h = max(geo.size.height, 1)
+                            // Clamp to the floor dockedPanelHeight enforces, or the handle is dead for every
+                            // fraction below it (most of the travel on a landscape phone).
+                            previewFrac = min(0.92, max(max(0.35, min(1, 240 / h)), previewFrac - delta / h))
                         }
                         .id(f.path)
                         .frame(height: dockedPanelHeight(geo.size.height))
@@ -95,6 +98,17 @@ struct BrowseView: View {
         .toast($model.toast)
         .onAppear { if layout == .compact { workspace.selectedDeviceId = model.deviceId } }
         .task { model.landIfNeeded() }
+        // ⌘U / ⇧⌘N live here, not on the Menu's items: a Button inside a Menu is not in the responder chain on
+        // iPadOS, so its shortcut only fired while the menu was open.
+        .background {
+            if model.path != nil {
+                Group {
+                    Button("Upload file here") { showImporter = true }.keyboardShortcut("u", modifiers: .command)
+                    Button("New folder") { newFolderOpen = true }.keyboardShortcut("n", modifiers: [.command, .shift])
+                }
+                .hidden()
+            }
+        }
     }
 
     private var savedPresented: Binding<Bool> {
@@ -113,10 +127,8 @@ struct BrowseView: View {
             if model.path != nil {
                 Menu {
                     Button { showImporter = true } label: { Label("Upload file here", systemImage: "square.and.arrow.up") }
-                        .keyboardShortcut("u", modifiers: .command)
                     Button { showPhotos = true } label: { Label("Upload photos or videos", systemImage: "photo.on.rectangle") }
                     Button { newFolderOpen = true } label: { Label("New folder", systemImage: "folder.badge.plus") }
-                        .keyboardShortcut("n", modifiers: [.command, .shift])
                 } label: {
                     Image(systemName: "plus")
                 }

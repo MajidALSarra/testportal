@@ -154,6 +154,6 @@ No third-party dependencies.
 ## Privacy manifests
 
 `Folderbird/Resources/PrivacyInfo.xcprivacy` and `ShareExtension/PrivacyInfo.xcprivacy` declare the two required-reason
-API categories the code uses — the App Group's `UserDefaults` (reason `CA92.1`) and file timestamps for the preview
+API categories the code uses — the App Group's `UserDefaults` (reasons `1C8F.1` for the app-group suite the share extension shares, plus `CA92.1` for the `.standard` fallback) and file timestamps for the preview
 cache sweep (`C617.1`). App Store Connect rejects an upload without them (ITMS-91053); CI checks that both bundles carry
 one. If you add a required-reason API (disk space, system boot time, keyboard list, …), add its category and reason.

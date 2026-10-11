@@ -130,7 +130,7 @@ struct FileViewerView: View {
                 if let u = link.preview_url, !u.isEmpty, let url = themed(u) { previewURL = url }
                 else { error = "Couldn't prepare this preview." }
             } catch let e {
-                error = errorMessage(e)
+                if !isCancellation(e) { error = errorMessage(e) }
             }
             loading = false
             return
@@ -156,7 +156,7 @@ struct FileViewerView: View {
                 if pdf == nil { error = "Couldn't display this PDF." }
             }
         } catch let e {
-            error = errorMessage(e)
+            if !isCancellation(e) { error = errorMessage(e) }
         }
         loading = false
     }

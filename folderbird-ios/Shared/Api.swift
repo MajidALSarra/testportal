@@ -290,7 +290,7 @@ struct Api {
         c.httpAdditionalHeaders = ["Accept": "application/json"]
         return c
     }()
-    static let session = URLSession(configuration: config)
+    static let session = URLSession(configuration: config, delegate: RedirectGuard(), delegateQueue: nil)
 
     /// Strict percent-encoding for query values: only unreserved characters pass through, so a "+" or "&" in a
     /// file name reaches ASP.NET Core as itself (a bare "+" would decode as a space).
@@ -433,4 +433,27 @@ func isCancellation(_ e: Error) -> Bool {
     if e is CancellationError { return true }
     if let u = e as? URLError, u.code == .cancelled { return true }
     return false
+}
+
+/// Redirect policy for every session that carries the API key: a same-origin redirect is followed as is, a
+/// cross-origin one is followed WITHOUT the Authorization header, which Foundation would otherwise re-send to the
+/// new host. The backend never redirects, so this only matters behind a misconfigured or hostile proxy.
+enum RedirectPolicy {
+    static func sanitized(_ request: URLRequest, from task: URLSessionTask) -> URLRequest {
+        guard let o = task.originalRequest?.url, let n = request.url else { return request }
+        let sameOrigin = o.scheme?.lowercased() == n.scheme?.lowercased()
+            && o.host?.lowercased() == n.host?.lowercased()
+            && o.port == n.port
+        if sameOrigin { return request }
+        var r = request
+        r.setValue(nil, forHTTPHeaderField: "Authorization")
+        return r
+    }
+}
+
+final class RedirectGuard: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(RedirectPolicy.sanitized(request, from: task))
+    }
 }

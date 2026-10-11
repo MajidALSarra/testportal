@@ -148,14 +148,22 @@ final class BrowseModel: ObservableObject {
     /// Fall back to "This PC" (drives) if the home can't be resolved (e.g. the device is offline).
     func land() async {
         loading = true; error = nil
+        // Anything the user does during the landing's round trips (a search, a folder tap) bumps the generation
+        // and wins; the landing then stands down instead of yanking the view to the home folder.
+        let gen = loadGeneration
         let sys = try? await api.system(deviceId)
         if Task.isCancelled { landed = false; loading = false; return }   // try again on the next appearance
         if let s = sys { drives = s.disks.filter { !($0.drive ?? "").isEmpty } }
-        if let home = await api.resolveHomeFolder(deviceId, system: sys) {
+        let home = await api.resolveHomeFolder(deviceId, system: sys)
+        guard gen == loadGeneration else { return }
+        if let home {
             await load(home)
         } else {
             loading = false
             if drives == nil && !drivesLoading { await loadDrives() }
+            // The device never answered (no /system, no drives): nothing landed, so try again next time it opens;
+            // an online device whose home merely cannot be resolved keeps its drives and is not re-asked.
+            if sys == nil && drives == nil { landed = false }
         }
     }
 
@@ -289,8 +297,11 @@ final class BrowseModel: ObservableObject {
     /// Upload picked or dropped files into the current folder, one at a time, then reload it.
     func upload(_ urls: [URL]) async {
         guard let folder = path else { return }
-        for url in urls { await uploadOne(url, to: folder) }
-        await load(folder)
+        var anyLanded = false
+        for url in urls { if await uploadOne(url, to: folder) { anyLanded = true } }
+        // Re-list only when something changed, as Android does: after a failure the listing stays on screen
+        // under the red bar instead of being replaced by an error box from a second round trip.
+        if anyLanded { await load(folder) }
     }
 
     /// Upload photos/videos picked from the Photos library (the Android picker reaches the gallery; the Files
@@ -321,7 +332,8 @@ final class BrowseModel: ObservableObject {
         }
     }
 
-    private func uploadOne(_ url: URL, to folder: String) async {
+    /// True when the file landed on the PC.
+    private func uploadOne(_ url: URL, to folder: String) async -> Bool {
         let name = url.lastPathComponent
         setXfer(Xfer(label: "Uploading \(name)", frac: 0))
         let scoped = url.startAccessingSecurityScopedResource()
@@ -343,8 +355,10 @@ final class BrowseModel: ObservableObject {
             // saving the file the upload replaced.
             PreviewCache.shared.clear()
             finishXfer(Xfer(label: "Uploaded \(name)", frac: 1, done: true))
+            return true
         } catch let e {
             finishXfer(Xfer(label: "Upload failed: \(errorMessage(e))", frac: nil, done: true, error: true))
+            return false
         }
     }
 

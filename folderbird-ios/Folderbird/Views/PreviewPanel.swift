@@ -156,7 +156,7 @@ struct PreviewPanel: View {
                 if let u = link.preview_url, !u.isEmpty, let url = themed(u) { previewURL = url }
                 else { error = "Couldn't prepare this preview — use the actions below." }
             } catch let e {
-                error = errorMessage(e)
+                if !isCancellation(e) { error = errorMessage(e) }
             }
             loading = false
             return
@@ -178,7 +178,7 @@ struct PreviewPanel: View {
                 if pdf == nil { error = "Couldn't render this file — use the actions below." }
             }
         } catch let e {
-            error = errorMessage(e)
+            if !isCancellation(e) { error = errorMessage(e) }
         }
         loading = false
     }

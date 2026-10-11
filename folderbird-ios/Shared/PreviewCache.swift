@@ -92,11 +92,15 @@ final class PreviewCache: @unchecked Sendable {
     }
     private var inflight: [String: Inflight] = [:]
 
+    /// One caller's membership in an Inflight entry; `left` makes leaving idempotent, since both the normal exit
+    /// and the cancellation handler may try.
+    private final class Waiter: @unchecked Sendable { var left = false }
+
     /// Joins the download already under way for `k`, or starts one; synchronous so the lock never spans an await.
     private func join(_ k: String, progress: (@MainActor (Double?) -> Void)?, start: () -> Task<URL, Error>) -> Inflight {
         lock.lock(); defer { lock.unlock() }
         let entry: Inflight
-        if let e = inflight[k] {
+        if let e = inflight[k], !e.task.isCancelled {
             e.waiters += 1
             entry = e
         } else {
@@ -107,17 +111,16 @@ final class PreviewCache: @unchecked Sendable {
         return entry
     }
 
-    private func leave(_ k: String, _ entry: Inflight) {
+    /// Removes one waiter; true when it was the last one. The entry is out of `inflight` before this returns, so
+    /// a caller arriving next starts afresh instead of inheriting a download that is about to be cancelled.
+    private func leave(_ k: String, _ entry: Inflight, _ w: Waiter) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        if let e = inflight[k], e.id == entry.id {
-            e.waiters -= 1
-            if e.waiters == 0 { inflight[k] = nil }
-        }
-    }
-
-    private func isLastWaiter(_ k: String, _ entry: Inflight) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        return inflight[k]?.id == entry.id && (inflight[k]?.waiters ?? 0) <= 1
+        if w.left { return false }
+        w.left = true
+        guard let e = inflight[k], e.id == entry.id else { return false }
+        e.waiters -= 1
+        if e.waiters == 0 { inflight[k] = nil; return true }
+        return false
     }
 
     private func progressCallbacks(_ k: String) -> [@MainActor (Double?) -> Void] {
@@ -131,6 +134,7 @@ final class PreviewCache: @unchecked Sendable {
                progress: (@MainActor (Double?) -> Void)? = nil) async throws -> URL {
         if let cached = get(deviceId: deviceId, fullPath: fullPath) { return cached }
         let k = keyOf(deviceId, fullPath)
+        let w = Waiter()
         let entry = join(k, progress: progress) {
             Task<URL, Error> { [self] in
                 let out = self.stage(fileName: fileName)
@@ -141,11 +145,13 @@ final class PreviewCache: @unchecked Sendable {
                 return out
             }
         }
-        defer { leave(k, entry) }
+        defer { _ = leave(k, entry, w) }
         return try await withTaskCancellationHandler {
             try await entry.task.value
         } onCancel: {
-            if isLastWaiter(k, entry) { entry.task.cancel() }
+            // Leave at once — not when task.value eventually returns — and cancel the shared download only as its
+            // last waiter, after the entry is gone from `inflight`.
+            if leave(k, entry, w) { entry.task.cancel() }
         }
     }
 }

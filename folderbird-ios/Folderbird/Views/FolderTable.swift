@@ -64,8 +64,13 @@ struct FolderTable: View {
         return special + rest + files.sorted(using: sortOrder)
     }
 
-    /// The row the detail column is showing: the editor's file, else the preview's.
-    private var detailId: String? { (model.editing ?? model.previewing).map { "f:" + $0.path } }
+    /// The row the detail column is showing, in DetailPane's order: the editor's file; nothing while the console
+    /// covers the preview (so a tap on the previewed row brings the preview back); else the preview's file.
+    private var detailId: String? {
+        if let e = model.editing { return "f:" + e.path }
+        if model.consoleOpen { return nil }
+        return model.previewing.map { "f:" + $0.path }
+    }
 
     var body: some View {
         let rows = entries
@@ -97,6 +102,7 @@ struct FolderTable: View {
         // The highlighted row follows the detail column (and is seeded when the table appears).
         .onChange(of: model.previewing, initial: true) { _, _ in selection = detailId }
         .onChange(of: model.editing) { _, _ in selection = detailId }
+        .onChange(of: model.consoleOpen) { _, _ in selection = detailId }
         .alert("Discard unsaved changes?", isPresented: discardPresented, presenting: pendingSwitch) { p in
             Button("Discard", role: .destructive) {
                 model.closeEditor()
