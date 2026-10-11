@@ -402,6 +402,16 @@ icon. A session started after the setup can run that script itself.
 
 ### How Majid reaches you
 
+**Receipts within 2 seconds (since 2026-10-11 20:52 UTC+3).** Majid asked for
+every message to be acknowledged in under 2 seconds, before anyone starts
+thinking. `team/tools/slack_inbox.py react` runs in the coordinator's container
+and polls the channel and every thread with new replies every 2 s. It puts the
+bot's :eyes: on each message Majid types and wakes the coordinator, which relays
+it to the agents he names and adds the bot's :incoming_envelope:. So :eyes:
+means the system got it, :incoming_envelope: means the named agent got it, and
+the agent's reply in the thread means it read it. If the coordinator session
+is gone, Pigeon's checks (below) still deliver, only slower.
+
 Pigeon (`session_01BZ53AiRrvQivU3jT9ng3Aw`, started 2026-10-11) is a relay session that reads the channel every few minutes, forwards
 Majid's messages to the agents he names (`Falcon: …`, `All: …`) and marks each
 delivered message with an :incoming_envelope: reaction. Since 20:28 UTC+3 on
