@@ -166,7 +166,6 @@ struct BrowseView: View {
 
 /// Phone-only: the console and the editor push onto the navigation stack (on iPad they are the detail column).
 @MainActor
-@MainActor
 private struct CompactRoutes: ViewModifier {
     @ObservedObject var model: BrowseModel
     let enabled: Bool
