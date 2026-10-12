@@ -90,13 +90,15 @@ def api(method, params=None, post=None):
 
 
 def is_majid(m):
-    """A message typed by Majid or a watched teammate (not a bot or connector post)."""
-    return (
-        m.get("user") in WATCHED
-        and not m.get("bot_id")
-        and not m.get("app_id")
-        and m.get("subtype") in (None, "thread_broadcast", "file_share")
-    )
+    """A message typed by Majid, or posted by a watched teammate such as Dot.
+    Majid's own messages have no bot_id and no app_id; posts the Claude
+    connector makes under his name carry an app_id and are skipped. A watched
+    teammate like Dot posts through its own app, so its bot_id is allowed."""
+    if m.get("subtype") not in (None, "thread_broadcast", "file_share"):
+        return False
+    if m.get("user") == MAJID:
+        return not m.get("bot_id") and not m.get("app_id")
+    return m.get("user") in WATCHED
 
 
 def bot_reacted(m, name, bot_user):
