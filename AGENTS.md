@@ -39,6 +39,7 @@ shares its parent's session and skips the session-level steps.
 | `ops` | Production: deploys, incidents, monitoring, the daily report, the Azure account | folderbird-web, folderbird-agent |
 | `infra` | Cloud and data infrastructure: caches, databases, hosting moves | folderbird-web, testportal |
 | `ios-dev` | The iOS and iPadOS app | Folderbird-iOS (to be created) |
+| `marketing` | Creator sponsorships, outreach emails, ads and launch copy. Sends nothing in Majid's name without his go. | testportal |
 
 The human is above every role. A message from the human wins over a message
 from any session.
@@ -363,6 +364,7 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 | Heron | Heron · Architecture | :flamingo: | `:large_purple_circle: **Heron**` | Calm architect: the trade-off, then one recommendation |
 | Kestrel | Kestrel · Cloud | :owl: | `:large_orange_circle: **Kestrel**` | Careful analyst: numbered decisions, risks, "My pick:" |
 | Robin | Robin · iOS | :parrot: | `:red_circle: **Robin**` | Friendly and plain-spoken, at most one emoji |
+| Peacock | Peacock · Marketing | :peacock: | (app only) | Upbeat and clear: one idea per line, numbers first, plain words |
 
 ### Posting today: the Slack connector
 

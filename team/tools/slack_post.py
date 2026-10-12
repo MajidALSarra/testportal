@@ -19,6 +19,7 @@ AGENTS = {
     "heron": ("Heron · Architecture", ":flamingo:"),
     "kestrel": ("Kestrel · Cloud", ":owl:"),
     "robin": ("Robin · iOS", ":parrot:"),
+    "peacock": ("Peacock · Marketing", ":peacock:"),
     "pigeon": ("Pigeon · Relay", ":dove_of_peace:"),
 }
 
