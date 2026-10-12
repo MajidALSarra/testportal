@@ -247,6 +247,7 @@ agent's verified snapshot, durable facts and working rules.
 | Heron | `heron` | architect | Multi-instance scale-out, production hotfix route, canaries | `session_01StJkv1hjLTqFSHEzGQcVWQ` |
 | Kestrel | `kestrel` | infra | Redis to Oracle-managed OCI Cache, OCI deployment brief | `session_01NCV7fgRcmSEDKwtFbyDKRu` |
 | Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
+| Peacock | `peacock` | marketing | YouTuber sponsorships, outreach, ads copy (since 2026-10-12) | `session_01QUBgtuM1ydXHF4APJ4k1p7` |
 
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
