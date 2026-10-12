@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Instant receipts for Majid's messages in #folderbird-agents.
 
-  python3 team/tools/slack_inbox.py react --dir <state dir> [--hours 12]
+  python3 team/tools/slack_inbox.py react --dir <state dir> [--hours 12] [--also U1,U2]
       Long-running, one per --dir (react.lock). Every 1.75 s it reads the
       newest top-level messages and every thread whose latest reply changed.
       Every 30 s, and after a start or an error, it also pages back 7 days so
@@ -40,6 +40,7 @@ import urllib.request
 
 CHANNEL = "C0C8GFKELQ4"
 MAJID = "U0C8GF0RF5J"
+WATCHED = {MAJID}  # plus any --also users (teammates who are people or other AIs, e.g. Dot)
 CAFILE = "/root/.ccr/ca-bundle.crt"
 INTERVAL = 1.75        # fast pass: about 34 history calls a minute, Tier 3 allows 50
 FAST_LIMIT = 30        # newest top-level messages read on each fast pass
@@ -89,8 +90,9 @@ def api(method, params=None, post=None):
 
 
 def is_majid(m):
+    """A message typed by Majid or a watched teammate (not a bot or connector post)."""
     return (
-        m.get("user") == MAJID
+        m.get("user") in WATCHED
         and not m.get("bot_id")
         and not m.get("app_id")
         and m.get("subtype") in (None, "thread_broadcast", "file_share")
@@ -136,7 +138,7 @@ def replies(parent_ts, oldest):
 
 
 def entry(m, parent=None):
-    e = {"ts": m["ts"], "thread_ts": m.get("thread_ts"), "text": m.get("text", "")}
+    e = {"ts": m["ts"], "thread_ts": m.get("thread_ts"), "user": m.get("user"), "text": m.get("text", "")}
     if parent is not None:
         e["thread_starter"] = parent.get("username") or parent.get("user")
         e["thread_text"] = (parent.get("text") or "")[:300]
@@ -340,6 +342,7 @@ if __name__ == "__main__":
         return args[i + 1] if 0 <= i < len(args) - 1 else default
 
     cmd = args[0] if args else ""
+    WATCHED.update(u for u in opt("--also", "").split(",") if u)
     if cmd == "react":
         react(opt("--dir", "."), float(opt("--hours", "12")))
     elif cmd == "wait":

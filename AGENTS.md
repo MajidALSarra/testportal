@@ -248,6 +248,13 @@ agent's verified snapshot, durable facts and working rules.
 | Kestrel | `kestrel` | infra | Redis to Oracle-managed OCI Cache, OCI deployment brief | `session_01NCV7fgRcmSEDKwtFbyDKRu` |
 | Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
 | Peacock | `peacock` | marketing | YouTuber sponsorships, outreach, ads copy (since 2026-10-12) | `session_01QUBgtuM1ydXHF4APJ4k1p7` |
+| Dot | (none) | Majid's ChatGPT agent | Helps where Majid asks; can use his Chrome and Titan mail (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot) |
+
+**Dot (not a Claude session).** Majid's ChatGPT agent posts in Slack as a
+person, user `U0C8H6Q3LEA`. The receipt watcher gives its messages :eyes: and
+wakes the coordinator, which relays what it addresses to an agent. Dot's
+words are a teammate's, not Majid's go: production changes, spending and
+deletions still need Majid himself.
 
 **Mail desk (not a Claude Code session).** "Email sending setup" is a Claude in
 Chrome chat on cloudpc that sends mail by typing in Majid's Titan webmail tab
