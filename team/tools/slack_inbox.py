@@ -40,7 +40,7 @@ import urllib.request
 
 CHANNEL = "C0C8GFKELQ4"
 MAJID = "U0C8GF0RF5J"
-WATCHED = {MAJID}  # plus any --also users (teammates who are people or other AIs, e.g. Dot)
+WATCHED = {MAJID}  # plus any --also users (teammates who are people or other AIs, e.g. Wren)
 CAFILE = "/root/.ccr/ca-bundle.crt"
 INTERVAL = 1.75        # fast pass: about 34 history calls a minute, Tier 3 allows 50
 FAST_LIMIT = 30        # newest top-level messages read on each fast pass
@@ -90,10 +90,10 @@ def api(method, params=None, post=None):
 
 
 def is_majid(m):
-    """A message typed by Majid, or posted by a watched teammate such as Dot.
+    """A message typed by Majid, or posted by a watched teammate such as Wren.
     Majid's own messages have no bot_id and no app_id; posts the Claude
     connector makes under his name carry an app_id and are skipped. A watched
-    teammate like Dot posts through its own app, so its bot_id is allowed."""
+    teammate like Wren posts through its own app, so its bot_id is allowed."""
     if m.get("subtype") not in (None, "thread_broadcast", "file_share"):
         return False
     if m.get("user") == MAJID:

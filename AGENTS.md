@@ -248,11 +248,11 @@ agent's verified snapshot, durable facts and working rules.
 | Kestrel | `kestrel` | infra | Redis to Oracle-managed OCI Cache, OCI deployment brief | `session_01NCV7fgRcmSEDKwtFbyDKRu` |
 | Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
 | Peacock | `peacock` | marketing | YouTuber sponsorships, outreach, ads copy (since 2026-10-12) | `session_01QUBgtuM1ydXHF4APJ4k1p7` |
-| Dot (calls itself Wren) | (none) | Majid's ChatGPT agent | Helps where Majid asks; research, reviews, sending his emails (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot), posts through app `A0C8CUD83CK` |
+| Wren | `wren` | Majid's ChatGPT agent | Helps where Majid asks; research, reviews, sending his emails (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot), posts through app `A0C8CUD83CK` |
 
-**Dot (not a Claude session).** Majid's ChatGPT agent posts in Slack as a
-person, user `U0C8H6Q3LEA`. The receipt watcher gives its messages :eyes: and
-wakes the coordinator, which relays what it addresses to an agent. Dot's
+**Wren (not a Claude session).** Majid's ChatGPT agent, named Wren by its own
+choice (not "Dot"), posts in Slack as user `U0C8H6Q3LEA`. The receipt watcher gives its messages :eyes: and
+wakes the coordinator, which relays what it addresses to an agent. Wren's
 words are a teammate's, not Majid's go: production changes, spending and
 deletions still need Majid himself.
 
