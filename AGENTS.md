@@ -255,7 +255,10 @@ Chrome chat on cloudpc that sends mail by typing in Majid's Titan webmail tab
 after his yes. No session can wake it, and it posts in Slack only through the
 connector, as Majid with a "Sent using Claude" footer. To send outreach, an
 agent posts the final email in Slack, Majid says go, then Majid asks the mail
-desk to send it.
+desk to send it. The mail desk posts as a reply in the "Mail Desk outbox"
+thread (ts `1791797562.383399`), and `team/tools/slack_mirror.py`, running in
+the coordinator's container, re-posts each post as "Mail Desk · Chrome" (first
+line `thread <ts>` picks the target thread).
 
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
@@ -374,6 +377,7 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 | Kestrel | Kestrel · Cloud | :owl: | `:large_orange_circle: **Kestrel**` | Careful analyst: numbered decisions, risks, "My pick:" |
 | Robin | Robin · iOS | :parrot: | `:red_circle: **Robin**` | Friendly and plain-spoken, at most one emoji |
 | Peacock | Peacock · Marketing | :peacock: | (app only) | Upbeat and clear: one idea per line, numbers first, plain words |
+| Mail desk | Mail Desk · Chrome | :e-mail: | (via the outbox mirror) | Short and factual: what was sent, to whom, and the reply |
 
 ### Posting today: the Slack connector
 
