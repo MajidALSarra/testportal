@@ -249,6 +249,14 @@ agent's verified snapshot, durable facts and working rules.
 | Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
 | Peacock | `peacock` | marketing | YouTuber sponsorships, outreach, ads copy (since 2026-10-12) | `session_01QUBgtuM1ydXHF4APJ4k1p7` |
 
+**Mail desk (not a Claude Code session).** "Email sending setup" is a Claude in
+Chrome chat on cloudpc that sends mail by typing in Majid's Titan webmail tab
+(`secureserver.titan.email/mail/`). It shows Majid every email and sends only
+after his yes. No session can wake it, and it posts in Slack only through the
+connector, as Majid with a "Sent using Claude" footer. To send outreach, an
+agent posts the final email in Slack, Majid says go, then Majid asks the mail
+desk to send it.
+
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
 
