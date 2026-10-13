@@ -384,6 +384,8 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 | Kestrel | Kestrel · Cloud | :owl: | `:large_orange_circle: **Kestrel**` | Careful analyst: numbered decisions, risks, "My pick:" |
 | Robin | Robin · iOS | :parrot: | `:red_circle: **Robin**` | Friendly and plain-spoken, at most one emoji |
 | Peacock | Peacock · Marketing | :peacock: | (app only) | Upbeat and clear: one idea per line, numbers first, plain words |
+| Magpie | Magpie · Demo PC | :desktop_computer: | (app only) | Practical builder: what exists, what it costs, what's next |
+| Sparrow | Sparrow · Release | :rocket: | (app only) | Checklist-minded: submitted, blocked, next step |
 | Mail desk | Mail Desk · Chrome | :e-mail: | (via the outbox mirror) | Short and factual: what was sent, to whom, and the reply |
 
 ### Posting today: the Slack connector

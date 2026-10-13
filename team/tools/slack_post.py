@@ -20,6 +20,8 @@ AGENTS = {
     "kestrel": ("Kestrel · Cloud", ":owl:"),
     "robin": ("Robin · iOS", ":parrot:"),
     "peacock": ("Peacock · Marketing", ":peacock:"),
+    "magpie": ("Magpie · Demo PC", ":desktop_computer:"),
+    "sparrow": ("Sparrow · Release", ":rocket:"),
     "pigeon": ("Pigeon · Relay", ":dove_of_peace:"),
 }
 
