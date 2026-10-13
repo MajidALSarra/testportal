@@ -98,10 +98,10 @@ function LockEgress {
   $blob = @(Resolve-DnsName 'folderbirdfiles.blob.core.windows.net' -Type A -ErrorAction Stop | Where-Object Type -eq 'A' | ForEach-Object IPAddress)
   if ($blob.Count -eq 0) { throw 'could not resolve folderbirdfiles.blob.core.windows.net' }
   $kms = @(Resolve-DnsName 'azkms.core.windows.net' -Type A -ErrorAction Stop | Where-Object Type -eq 'A' | ForEach-Object IPAddress)
-  $ips = $ips | Sort-Object -Unique
+  $ips = @($ips | Sort-Object -Unique)   # keep it an array: one IP would otherwise splat char by char
   if ($ips.Count -eq 0) { throw 'could not resolve folderbird.com' }
   Write-Host "folderbird IPs: $($ips -join ', ')"
-  $rule = { param($n, $p, $dest, $ports, $acc) Az network nsg rule create -g $ResourceGroup --nsg-name $nsg -n $n --priority $p `
+  $rule = { param([string]$n, [int]$p, [string[]]$dest, [string[]]$ports, [string]$acc) Az network nsg rule create -g $ResourceGroup --nsg-name $nsg -n $n --priority $p `
       --direction Outbound --access $acc --protocol '*' --source-address-prefixes VirtualNetwork `
       --destination-address-prefixes @dest --destination-port-ranges @ports -o none }
   & $rule 'allow-folderbird'   100 $ips                          @('443','80')   'Allow'
