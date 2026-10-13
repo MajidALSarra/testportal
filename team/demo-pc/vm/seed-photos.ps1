@@ -1,47 +1,55 @@
-# Runs INSIDE the reviewer demo VM as SYSTEM. Downloads public-domain / CC0 photos from Wikimedia
-# Commons, re-encodes each one (which drops EXIF, GPS and every other metadata block) and writes a
-# CREDITS.txt. The license is read from Commons' own metadata per file; anything that is not CC0 or
-# public domain is skipped. Needs at least $Min photos or it fails.
+# Runs INSIDE the reviewer demo VM as SYSTEM, ONCE, before any reviewer has access. Downloads CC0 /
+# public-domain photos from Wikimedia Commons (license read per file from Commons' own metadata),
+# re-encodes each (dropping EXIF, GPS and other metadata) and writes Pictures\CREDITS.txt.
 param([string]$ReviewUser = 'fbreview', [int]$Want = 8, [int]$Min = 5)
-$ErrorActionPreference = 'Stop'
-# Run only AFTER the first auto-logon has created the profile: writing C:\Users\<user> before that
-# makes Windows give the user a new C:\Users\<user>.<PC> profile and these files are lost to it.
-if (-not (Test-Path "C:\Users\$ReviewUser\NTUSER.DAT")) { throw "profile for $ReviewUser not created yet - reboot for auto-logon first" }
+$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Drawing
 [Net.ServicePointManager]::SecurityProtocol = 'Tls12'
-$ua  = @{ 'User-Agent' = 'FolderbirdDemoSeed/1.0 (https://folderbird.com/Contact)' }
-$out = "C:\Users\$ReviewUser\Pictures"
+$sid = (Get-LocalUser $ReviewUser).SID.Value
+$userDir = (Get-CimInstance Win32_UserProfile | Where-Object SID -eq $sid).LocalPath
+if (-not $userDir -or -not (Test-Path (Join-Path $userDir 'NTUSER.DAT'))) { throw "profile for $ReviewUser not created yet - auto-logon first" }
+$out = Join-Path $userDir 'Pictures'
+if ((Test-Path $out) -and ((Get-Item $out -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$out is a reparse point - refusing" }
 New-Item -ItemType Directory -Force -Path $out | Out-Null
-$cats = 'Featured_pictures_of_landscapes','Featured_pictures_of_plants','Featured_pictures_of_animals','Featured_pictures_of_architecture'
+$ua  = @{ 'User-Agent' = 'FolderbirdDemoSeed/1.0 (https://folderbird.com/Contact)' }
+# Tags GDI+ reports on ANY JPEG it writes (quantisation tables, JFIF density). Anything else = metadata.
+$structural = 0x5090,0x5091,0x5110,0x5111,0x5112,0x011A,0x011B,0x0128
 $jpeg = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object MimeType -eq 'image/jpeg'
 $ep = New-Object Drawing.Imaging.EncoderParameters 1
 $ep.Param[0] = New-Object Drawing.Imaging.EncoderParameter ([Drawing.Imaging.Encoder]::Quality), 88L
 $credits = @('Photos on this demo PC. Each is public domain or CC0 on Wikimedia Commons; metadata removed.', '')
+$cats = 'Featured_pictures_of_astronomy','Featured_pictures_of_landscapes','Featured_pictures_of_plants','Featured_pictures_of_animals','Featured_pictures_of_architecture'
 $n = 0
 foreach ($c in $cats) {
-  if ($n -ge $Want) { break }
-  $api = "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=categorymembers&gcmtitle=Category:$c&gcmtype=file&gcmlimit=100&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=2000&iiextmetadatafilter=LicenseShortName"
-  $r = Invoke-RestMethod -Uri $api -Headers $ua
-  if (-not $r.query) { continue }
-  foreach ($p in $r.query.pages.PSObject.Properties.Value) {
-    if ($n -ge $Want) { break }
-    $ii = $p.imageinfo[0]
-    $lic = "$($ii.extmetadata.LicenseShortName.value)"
-    if ($ii.mime -ne 'image/jpeg' -or $lic -notmatch '^(CC0|Public domain)') { continue }
-    $tmp = Join-Path $env:TEMP ("fbphoto-$n.jpg")
-    try { Invoke-WebRequest -UseBasicParsing -Uri $ii.thumburl -Headers $ua -OutFile $tmp } catch { continue }
-    $name = ($p.title -replace '^File:','' -replace '\.[^.]+$','' -replace '[^A-Za-z0-9 _-]','' -replace '\s+','-')
-    if ($name.Length -gt 50) { $name = $name.Substring(0,50) }
-    $dest = Join-Path $out "$name.jpg"
-    $img = [Drawing.Image]::FromFile($tmp)
-    try { $bmp = New-Object Drawing.Bitmap $img; $bmp.Save($dest, $jpeg, $ep); $bmp.Dispose() } finally { $img.Dispose() }
-    Remove-Item $tmp
-    $chk = [Drawing.Image]::FromFile($dest); $meta = $chk.PropertyIdList.Count; $chk.Dispose()
-    if ($meta -gt 0) { Remove-Item $dest; continue }   # never keep a file that still carries metadata
-    $credits += "$name.jpg - $lic - $($ii.descriptionurl)"
-    $n++
+  $cont = $null
+  for ($page = 0; $page -lt 5 -and $n -lt $Want; $page++) {
+    $api = "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=categorymembers&gcmtitle=Category:$c&gcmtype=file&gcmlimit=50&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=1920&iiextmetadatafilter=LicenseShortName"
+    if ($cont) { $api += "&gcmcontinue=$([Uri]::EscapeDataString($cont))" }
+    try { $r = Invoke-RestMethod -Uri $api -Headers $ua } catch { break }
+    if (-not $r.query) { break }
+    foreach ($p in $r.query.pages.PSObject.Properties.Value) {
+      if ($n -ge $Want) { break }
+      if (-not $p.imageinfo -or -not $p.imageinfo[0].thumburl) { continue }
+      $ii = $p.imageinfo[0]; $lic = "$($ii.extmetadata.LicenseShortName.value)"
+      if ($ii.mime -ne 'image/jpeg' -or $lic -notmatch '^(CC0|Public domain)') { continue }
+      $name = ($p.title -replace '^File:','' -replace '\.[^.]+$','' -replace '[^A-Za-z0-9 _-]','' -replace '\s+','-')
+      if ($name.Length -gt 50) { $name = $name.Substring(0,50) }
+      $tmp = Join-Path $env:TEMP "fbphoto-$n.jpg"; $dest = Join-Path $out "$name.jpg"
+      try {
+        Invoke-WebRequest -UseBasicParsing -Uri $ii.thumburl -Headers $ua -OutFile $tmp
+        $img = [Drawing.Image]::FromFile($tmp)
+        try { $bmp = New-Object Drawing.Bitmap $img; try { $bmp.Save($dest, $jpeg, $ep) } finally { $bmp.Dispose() } } finally { $img.Dispose() }
+        $chk = [Drawing.Image]::FromFile($dest)
+        try { $meta = @($chk.PropertyIdList | Where-Object { $structural -notcontains $_ }) } finally { $chk.Dispose() }
+        if ($meta.Count -gt 0) { throw "metadata left: $($meta -join ',')" }
+        $credits += "$name.jpg - $lic - $($ii.descriptionurl)"; $n++
+      } catch { Remove-Item $dest -Force -ErrorAction SilentlyContinue }
+      finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+    }
+    $cont = $r.continue.gcmcontinue; if (-not $cont) { break }
   }
 }
 Set-Content -Path (Join-Path $out 'CREDITS.txt') -Value $credits -Encoding UTF8
+icacls $out /setowner $ReviewUser /T /C /Q | Out-Null
 if ($n -lt $Min) { throw "only $n photos passed the license and metadata checks" }
 "SEED-PHOTOS:OK $n photos"
