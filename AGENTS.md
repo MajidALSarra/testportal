@@ -248,6 +248,8 @@ agent's verified snapshot, durable facts and working rules.
 | Kestrel | `kestrel` | infra | Redis to Oracle-managed OCI Cache, OCI deployment brief | `session_01NCV7fgRcmSEDKwtFbyDKRu` |
 | Robin | `robin` | ios-dev | Native iOS and iPadOS app | `session_01BR5hYJFWFnWQ7CW6HXWkdE` |
 | Peacock | `peacock` | marketing | YouTuber sponsorships, outreach, ads copy (since 2026-10-12) | `session_01QUBgtuM1ydXHF4APJ4k1p7` |
+| Magpie | `magpie` | infra | Reviewer demo PC and account for the ChatGPT resubmission (since 2026-10-13) | `session_012T5iQK5F8AZBZdKkVcUGDD` |
+| Sparrow | `sparrow` | release | ChatGPT plugin resubmission (the 09-11 portal session, runs on Majid's laptop) | `session_018Ddfd56Kg2AsHaVs7na6cz` |
 | Wren | `wren` | Majid's ChatGPT agent | Helps where Majid asks; research, reviews, sending his emails (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot), posts through app `A0C8CUD83CK` |
 
 **Wren (not a Claude session).** Majid's ChatGPT agent, named Wren by its own
