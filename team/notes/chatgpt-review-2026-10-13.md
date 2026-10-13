@@ -6,6 +6,12 @@ Majid (Slack, 2026-10-13 08:34 UTC+3): "there was a session who can create VMs a
 
 Compiled by the coordinator from 9 past sessions' transcripts. No passwords or keys appear here; only where they live.
 
+## Correction (Kestrel, 2026-10-13 06:00 UTC, from production logs)
+
+- OpenIddict codes, access and refresh tokens are protected by Data Protection, the same key ring now held in Redis and PostgreSQL. A restart does not break them. The ephemeral keys only sign id_tokens, which the connector does not use; making them permanent is a later clean-up, not the cause.
+- Production did not restart between 12 Oct 03:17 and 13 Oct 05:10 UTC. At 23:16 UTC on 12 Oct the reviewer's browser reached /connect/authorize, was sent to /Account/Login and never submitted a sign-in (no POST). The rejection came 9 minutes later: the cause is no working credentials.
+- Majid's phone sign-out on 13 Oct was not caused by the key-ring rollout: his phone browser had no saved sign-in at 04:46 UTC, before the update.
+
 ## Recommendation
 
 Start the VM work in a fresh session. Do not revive one for it. None of the 9 sessions ever created a VM, container or Folderbird account. Every Azure path that worked went through az on Majid's laptop.
