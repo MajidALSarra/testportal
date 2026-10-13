@@ -34,7 +34,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 # log: %LOCALAPPDATA%\fb-review\build.log, last line BUILD:OK or BUILD:FAILED <step>
 ```
 
-The script takes no password argument and asks for nothing. Never add a password parameter.
+The script takes no password argument and asks for nothing. Never add a password parameter. Only one
+copy runs at a time (lock file), and it puts back the previous default az subscription when it ends.
 
 Order: preflight (subscription pinned, group must be new or ours, size available, files present) ->
 resource group -> **budget alert** (read back) -> NSG -> VM -> Bastion Developer -> demo user ->
@@ -44,7 +45,9 @@ every in-VM step.
 
 Then Majid: Portal > fb-review > Connect > Bastion, sign in as `.\fbreview` with the password the
 window showed once (not in the log), sign the Folderbird app into the reviewer account, close the
-Bastion tab without signing out, and check My Devices shows `fb-review` Connected.
+Bastion tab without signing out, check My Devices shows `fb-review` Connected, then run the script
+once more with `-ArmAutoLogon` (turns on ForceAutoLogon, so any logoff logs the demo user back on; it is
+off until then because it would bounce Majid's Bastion sign-in).
 After that: connector-smoke on prod with the reviewer account, then resubmit.
 
 Remove it all: `az group delete -n folderbird-review-rg` (a deletion: needs Majid's go).
@@ -57,9 +60,11 @@ Remove it all: `az group delete -n folderbird-review-rg` (a deletion: needs Maji
   address, already allowed by the default NSG rules.
 - **Outbound lock after seeding.** Reviewers get a shell, and abuse from it would be billed and blamed
   on this subscription (it was suspended once, on 11 Oct). Outbound is allowed only to folderbird.com and
-  the App Service host (resolved at build time), Azure Storage West Europe (file transfers), Windows Update,
+  the App Service host (resolved at build time), the `folderbirdfiles` blob host (device file transfers stage
+  there: `DeviceOps.StageDeviceFileToBlobAsync`), Windows Update,
   Microsoft Front Door and KMS activation; everything else to the Internet is denied, and a check proves
-  folderbird.com works while example.com does not. If folderbird.com's IPs change, run `-RefreshEgress`.
+  folderbird.com works while example.com does not. The check covers folderbird.com, the App Service host
+  and the blob host. If any of their IPs change, run `-RefreshEgress`.
   A separate subscription would isolate it further; Majid decides.
 - The app runs as a **standard user**. The built-in admin account is disabled; its random password is
   never kept. Admin work is `az vm run-command` as SYSTEM.
@@ -68,7 +73,7 @@ Remove it all: `az group delete -n folderbird-review-rg` (a deletion: needs Maji
   is deleted afterwards.
 - `C:\ProgramData\FolderbirdDemo` is SYSTEM/Administrators-writable only; Autologon64.exe is deleted
   after use; signers are checked by exact name.
-- Auto-logon (LSA secret) with ForceAutoLogon, and a task every 5 minutes that reinstalls/restarts the app.
+- Auto-logon (LSA secret); ForceAutoLogon after Majid's sign-in (`-ArmAutoLogon`); and a task every 5 minutes that reinstalls/restarts the app.
 - Photos: Commons files whose own metadata says CC0 or public domain, re-encoded; only GDI+'s structural
   JPEG tags may remain, anything else (EXIF, GPS) means the file is dropped.
 - No managed identity (checked), no az/gh login, no keys, nothing of Majid's on the VM.

@@ -2,20 +2,21 @@
 # run inside a 45 s Folderbird run_command. Majid starts it himself in a visible window, or an agent
 # starts it DETACHED and polls the log:
 #   Start-Process powershell.exe -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File',
-#     '<path>\new-review-vm.ps1','-SubscriptionId','<id>','-AlertEmail','<email>'
+#     '"<path>\new-review-vm.ps1"','-SubscriptionId','<id>','-AlertEmail','<email>'
 #   log: %LOCALAPPDATA%\fb-review\build.log   last line BUILD:OK or BUILD:FAILED <step>
 # It asks for nothing and takes no password argument (never add one). Only after Majid's typed go.
 #
 #   .\new-review-vm.ps1 -SubscriptionId <id> -AlertEmail <email> -WhatIf      # preflight only, changes nothing
 #   .\new-review-vm.ps1 -SubscriptionId <id> -AlertEmail <email>              # build (re-runnable: resumes by stage)
-#   .\new-review-vm.ps1 -SubscriptionId <id> -AlertEmail <email> -RefreshEgress   # re-resolve folderbird.com IPs only
+#   .\new-review-vm.ps1 -SubscriptionId <id> -AlertEmail <email> -RefreshEgress   # re-resolve folderbird IPs only
+#   .\new-review-vm.ps1 -SubscriptionId <id> -AlertEmail <email> -ArmAutoLogon    # after Majid's Bastion sign-in
 #
 # What it makes, all in its own resource group (West Europe):
 #   budget alert (first, before anything billable) -> NSG -> VM fb-review (Windows Server 2022, Standard_B2s,
 #   64 GB Standard SSD, outbound-only Standard public IP, no managed identity) -> Bastion Developer (free)
 #   -> standard user + auto-logon + app task -> fictional documents -> CC0/PD photos -> OUTBOUND LOCK.
 # Inbound: no allow rule (the script stops if one appears). Outbound after seeding: only folderbird.com,
-# the App Service host, Azure Storage West Europe (file transfers), Windows Update / activation; the rest of
+# the App Service host, the folderbirdfiles blob host (file transfers), Windows Update / activation; the rest of
 # the internet is denied, because reviewers get a shell and abuse would be billed to this subscription.
 # Passwords: admin is random and never kept (the account is disabled inside the VM); the demo user's is
 # random, shown ONCE in this window (not in the log) for Majid's single Bastion sign-in.
@@ -31,14 +32,18 @@ param(
   [string]$ReviewUser    = 'fbreview',
   [int]   $Budget        = 60,          # in the billing account's currency
   [switch]$WhatIf,
-  [switch]$RefreshEgress
+  [switch]$RefreshEgress,
+  [switch]$ArmAutoLogon
 )
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $logDir = Join-Path $env:LOCALAPPDATA 'fb-review'; New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $log = Join-Path $logDir 'build.log'
+try { $lock = [IO.File]::Open((Join-Path $logDir 'build.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }
+catch { throw 'another new-review-vm.ps1 is already running' }
 Start-Transcript -Path $log -Append | Out-Null
 $step = 'start'
+$prevSub = $null
 $secretFiles = @()
 
 $env:AZURE_EXTENSION_USE_DYNAMIC_INSTALL = 'yes_without_prompt'   # az must never wait on stdin
@@ -87,6 +92,10 @@ function LockEgress {
   foreach ($h in 'folderbird.com','folderbird-app.azurewebsites.net') {
     $ips += @(Resolve-DnsName $h -Type A -ErrorAction Stop | Where-Object Type -eq 'A' | ForEach-Object IPAddress)
   }
+  # Device file transfers PUT to / GET from the folderbirdfiles blob account (DeviceOps.StageDeviceFileToBlobAsync,
+  # MCP download_file / upload_file). Only that account's address, not the whole Storage service tag.
+  $blob = @(Resolve-DnsName 'folderbirdfiles.blob.core.windows.net' -Type A -ErrorAction Stop | Where-Object Type -eq 'A' | ForEach-Object IPAddress)
+  if ($blob.Count -eq 0) { throw 'could not resolve folderbirdfiles.blob.core.windows.net' }
   $kms = @(Resolve-DnsName 'azkms.core.windows.net' -Type A -ErrorAction Stop | Where-Object Type -eq 'A' | ForEach-Object IPAddress)
   $ips = $ips | Sort-Object -Unique
   if ($ips.Count -eq 0) { throw 'could not resolve folderbird.com' }
@@ -95,30 +104,37 @@ function LockEgress {
       --direction Outbound --access $acc --protocol '*' --source-address-prefixes VirtualNetwork `
       --destination-address-prefixes @dest --destination-port-ranges @ports -o none }
   & $rule 'allow-folderbird'   100 $ips                          @('443','80')   'Allow'
-  & $rule 'allow-storage-weu'  110 @('Storage.WestEurope')       @('443')        'Allow'
+  & $rule 'allow-blob'         110 $blob                         @('443')        'Allow'
+  try { Az network nsg rule delete -g $ResourceGroup --nsg-name $nsg -n 'allow-storage-weu' -o none } catch { }
   & $rule 'allow-winupdate'    120 @('AzureUpdateDelivery')      @('443','80')   'Allow'
   & $rule 'allow-ms-frontdoor' 130 @('AzureFrontDoor.FirstParty') @('443','80')  'Allow'
   & $rule 'allow-kms'          140 $kms                          @('1688')       'Allow'
   & $rule 'deny-internet'     4000 @('Internet')                 @('*')          'Deny'
 }
+function CheckEgress {
+  $e = InVm 'egress-check.ps1' 'EGRESS'; Write-Host $e
+  foreach ($want in 'site=True','apphost=True','blob=True','open-internet=False') { if ($e -notmatch [regex]::Escape($want)) { throw "outbound check failed ($want): $e" } }
+}
 
 try {
   Step 'Preflight'
   if ($ResourceGroup -match 'cloudpc|build|^folderbird-rg$') { throw "refusing resource group name $ResourceGroup" }
-  foreach ($f in 'vm\setup-user.ps1','vm\seed-docs.ps1','vm\seed-photos.ps1','vm\probe.ps1','vm\egress-check.ps1','seed\seed-docs.zip') {
+  foreach ($f in 'vm\setup-user.ps1','vm\seed-docs.ps1','vm\seed-photos.ps1','vm\probe.ps1','vm\egress-check.ps1','vm\arm-autologon.ps1','seed\seed-docs.zip') {
     if (-not (Test-Path -LiteralPath (Join-Path $here $f))) { throw "missing $f" } }
   if (-not (Test-Path -LiteralPath $py)) { throw "Azure CLI python not found at $py" }
+  $prevSub = "$(Az account show --query id -o tsv)".Trim()
   Az account set --subscription $SubscriptionId
   $acct = AzJson account show
   Write-Host "subscription: $($acct.name)"
   $rgExists = (Az group exists -n $ResourceGroup) -eq 'true'
   if ($rgExists -and (AzJson group show -n $ResourceGroup).tags.purpose -ne 'chatgpt-reviewer-demo') { throw "$ResourceGroup exists and is not ours - refusing" }
-  $sku = @(AzJson vm list-skus -l $Location --size $Size --resource-type virtualMachines) | Where-Object name -eq $Size
+  $sku = (AzJson vm list-skus -l $Location --size $Size --resource-type virtualMachines) | Where-Object name -eq $Size
   if (-not $sku -or $sku.restrictions.Count -gt 0) { throw "$Size is not available in $Location for this subscription" }
   Write-Host "group exists: $rgExists   size $Size available in $Location"
   if ($WhatIf) { Write-Host "WhatIf: would build $ResourceGroup/$Name, budget $Budget/month to $AlertEmail. Nothing changed."; Write-Host 'BUILD:OK whatif'; return }
 
-  if ($RefreshEgress) { Step 'Refresh outbound rule'; LockEgress; Write-Host (InVm 'egress-check.ps1' 'EGRESS'); Write-Host 'BUILD:OK refresh'; return }
+  if ($RefreshEgress) { Step 'Refresh outbound rule'; LockEgress; CheckEgress; Write-Host 'BUILD:OK refresh'; return }
+  if ($ArmAutoLogon)  { Step 'Arm ForceAutoLogon'; Write-Host (InVm 'arm-autologon.ps1' 'ARM' @("ReviewUser=$ReviewUser")); Write-Host 'BUILD:OK arm'; return }
 
   Step 'Resource group'
   if (-not $rgExists) { Az group create -n $ResourceGroup -l $Location --tags purpose=chatgpt-reviewer-demo owner=magpie -o none }
@@ -130,8 +146,11 @@ try {
   $body = @{ properties = @{ category = 'Cost'; amount = $Budget; timeGrain = 'Monthly'
     timePeriod = @{ startDate = (Get-Date -Day 1).ToString('yyyy-MM-01'); endDate = (Get-Date).AddYears(5).ToString('yyyy-MM-01') }
     notifications = @{ actual50 = (& $notify 50 'Actual'); actual80 = (& $notify 80 'Actual'); actual100 = (& $notify 100 'Actual'); fcast100 = (& $notify 100 'Forecasted') } } }
-  $bf = Join-Path $env:TEMP 'fb-review-budget.json'; $body | ConvertTo-Json -Depth 6 | Set-Content $bf -Encoding ASCII
-  try { Az rest --method put --url $budgetUrl --body "@$bf" -o none } finally { Remove-Item $bf -Force }
+  $have = $null; try { $have = AzJson rest --method get --url $budgetUrl } catch { }
+  if (-not $have -or $have.properties.amount -ne $Budget) {
+    $bf = Join-Path $env:TEMP 'fb-review-budget.json'; $body | ConvertTo-Json -Depth 6 | Set-Content $bf -Encoding ASCII
+    try { Az rest --method put --url $budgetUrl --body "@$bf" -o none } finally { Remove-Item $bf -Force }
+  }
   if ((AzJson rest --method get --url $budgetUrl).properties.amount -ne $Budget) { throw 'budget not readable after create' }
 
   Step 'Network security group'
@@ -153,6 +172,7 @@ try {
   $rules = AzJson network nsg rule list -g $ResourceGroup --nsg-name "$Name-nsg"
   if (@($rules | Where-Object { $_.direction -eq 'Inbound' -and $_.access -eq 'Allow' }).Count -gt 0) { throw 'an inbound allow rule exists - stop' }
   $stage = Stage
+  if ($stage -notin 'created','user','seeded','locked') { throw "unknown stage tag '$stage' - refusing" }
   if ($stage -eq 'locked') { throw 'this VM is locked (reviewers may have had access). Never re-run the in-VM steps; rebuild instead.' }
 
   Step 'Bastion Developer (free)'
@@ -167,12 +187,16 @@ try {
     $userPw = NewPassword
     $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($userPw))
     $protFile = SecretFile "ReviewPasswordB64=$b64"
-    Az vm run-command create -g $ResourceGroup --vm-name $Name -n setup-user --script "@$here\vm\setup-user.ps1" `
-      --parameters "ReviewUser=$ReviewUser" --protected-parameters "@$protFile" --timeout-in-seconds 900 -o none
     $b64 = $null
-    $st = AzJson vm run-command show -g $ResourceGroup --vm-name $Name -n setup-user --instance-view
-    $out = "$($st.instanceView.output)"
-    Az vm run-command delete -g $ResourceGroup --vm-name $Name -n setup-user --yes -o none   # drop the stored protected parameters
+    try {
+      Az vm run-command create -g $ResourceGroup --vm-name $Name --name setup-user --script "@$here\vm\setup-user.ps1" `
+        --parameters "ReviewUser=$ReviewUser" --protected-parameters "@$protFile" --timeout-in-seconds 900 -o none
+      $st = AzJson vm run-command show -g $ResourceGroup --vm-name $Name --name setup-user --instance-view
+      $out = "$($st.instanceView.output)"
+    } finally {
+      # never leave the stored protected parameters on the VM, whatever happened
+      try { Az vm run-command delete -g $ResourceGroup --vm-name $Name --name setup-user --yes -o none } catch { Write-Warning "run-command delete failed: $_" }
+    }
     if ($out -notmatch 'SETUP-USER:OK') { throw "setup-user failed: $out $($st.instanceView.error)" }
     Write-Host $out
     Stop-Transcript | Out-Null            # the password is shown in the window only, never in the log
@@ -189,7 +213,8 @@ try {
     Step 'Wait for the profile and the Folderbird app'
     $ready = $false
     for ($i = 1; $i -le 12 -and -not $ready; $i++) {
-      $p = InVm 'probe.ps1' 'PROBE' @("ReviewUser=$ReviewUser"); Write-Host "  try $i : $p"
+      try { $p = InVm 'probe.ps1' 'PROBE' @("ReviewUser=$ReviewUser") } catch { $p = "probe error: $_" }
+      Write-Host "  try $i : $p"
       $ready = $p -match 'READY'; if (-not $ready) { Start-Sleep -Seconds 30 }
     }
     if (-not $ready) { throw 'profile or app not ready after ~10 minutes (check %LOCALAPPDATA%\FolderbirdDemo\app-start.log on the VM)' }
@@ -213,8 +238,7 @@ try {
   if ($stage -eq 'seeded') {
     Step 'Outbound lock'
     LockEgress
-    $e = InVm 'egress-check.ps1' 'EGRESS'; Write-Host $e
-    if ($e -notmatch 'folderbird=True' -or $e -notmatch 'open-internet=False') { throw "outbound lock check failed: $e" }
+    CheckEgress
     SetStage 'locked'
   }
 
@@ -226,11 +250,14 @@ Next, Majid only:
     Microsoft/Google account, and clear the browser's saved logins before you leave: reviewers can read it all.
  3. Close the Bastion TAB. Do not sign out of Windows (if you do, auto-logon brings the user back).
  4. folderbird.com > My Devices must show '$Name' as Connected.
+ 5. Then run this script again with -ArmAutoLogon (a logoff by anyone then logs the demo user back on).
 "@
   Write-Host 'BUILD:OK'
 }
 catch { Write-Host "BUILD:FAILED $step : $_" -ForegroundColor Red; throw }
 finally {
   foreach ($f in $secretFiles) { Remove-Item $f -Force -ErrorAction SilentlyContinue }
+  if ($prevSub -and $prevSub -ne $SubscriptionId) { try { Az account set --subscription $prevSub } catch { } }
   try { Stop-Transcript | Out-Null } catch { }
+  $lock.Dispose()
 }

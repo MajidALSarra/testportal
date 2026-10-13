@@ -50,6 +50,5 @@ foreach ($c in $cats) {
   }
 }
 Set-Content -Path (Join-Path $out 'CREDITS.txt') -Value $credits -Encoding UTF8
-icacls $out /setowner $ReviewUser /T /C /Q | Out-Null
 if ($n -lt $Min) { throw "only $n photos passed the license and metadata checks" }
 "SEED-PHOTOS:OK $n photos"

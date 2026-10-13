@@ -3,8 +3,9 @@
 # junctions where SYSTEM works. Rebuild the VM instead.
 #  0. A STANDARD local user runs the Folderbird app (reviewers get a shell through the exec scope).
 #     The built-in admin account is disabled; admin work goes through run-command as SYSTEM.
-#  1. Auto-logon via Sysinternals Autologon (LSA secret, never a plain-text registry value) plus
-#     ForceAutoLogon, so a 'logoff' by a reviewer logs the user straight back on.
+#  1. Auto-logon via Sysinternals Autologon (LSA secret, never a plain-text registry value).
+#     ForceAutoLogon stays OFF here (it would bounce Majid's Bastion sign-in back to the console);
+#     arm-autologon.ps1 turns it on after he has signed the app in.
 #  2. A task for the user, at logon and every 5 minutes, that installs Folderbird (signer checked) and
 #     starts it when it is not running.
 #  3. No sleep, no hibernate.
@@ -43,9 +44,9 @@ try {
 } finally { Remove-Item $al -Force -ErrorAction SilentlyContinue }
 $pw = $null; $sec = $null
 $wlKey = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
-Set-ItemProperty $wlKey -Name ForceAutoLogon -Value '1' -Type String
+Set-ItemProperty $wlKey -Name ForceAutoLogon -Value '0' -Type String
 $wl = Get-ItemProperty $wlKey
-if ($wl.AutoAdminLogon -ne '1' -or $wl.ForceAutoLogon -ne '1' -or $wl.DefaultUserName -ne $ReviewUser) { throw 'auto-logon not set' }
+if ($wl.AutoAdminLogon -ne '1' -or $wl.ForceAutoLogon -ne '0' -or $wl.DefaultUserName -ne $ReviewUser) { throw 'auto-logon not set' }
 if ($wl.PSObject.Properties.Name -contains 'DefaultPassword') { throw 'plain-text DefaultPassword present - refusing' }
 
 # --- the admin account is not needed: run-command as SYSTEM is the admin path ---------------------

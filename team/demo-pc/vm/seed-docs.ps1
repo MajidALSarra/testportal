@@ -34,7 +34,4 @@ try {
     }
   } finally { $z.Dispose() }
 } finally { Remove-Item $b64, $zip -Force -ErrorAction SilentlyContinue }   # a failed try never poisons the next
-# Files written by SYSTEM: give the user ownership so they behave like the user's own files.
-icacls (Join-Path $userDir 'Documents') /setowner $ReviewUser /T /C /Q | Out-Null
-icacls (Join-Path $userDir 'Desktop') /setowner $ReviewUser /T /C /Q | Out-Null
 "SEED-DOCS:OK $count files"

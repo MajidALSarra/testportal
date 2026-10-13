@@ -1,7 +1,7 @@
 # Read-only probe, run as SYSTEM. READY when the review user's profile exists and the Folderbird app runs
 # in that user's session. Changes nothing.
 param([string]$ReviewUser = 'fbreview')
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'
 $sid = (Get-LocalUser $ReviewUser).SID.Value
 $prof = (Get-CimInstance Win32_UserProfile | Where-Object SID -eq $sid).LocalPath
 $app = @(Get-Process FolderbirdClient -IncludeUserName -ErrorAction SilentlyContinue | Where-Object UserName -like "*\$ReviewUser")
