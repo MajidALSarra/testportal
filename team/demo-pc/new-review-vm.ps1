@@ -199,11 +199,26 @@ try {
     }
     if ($out -notmatch 'SETUP-USER:OK') { throw "setup-user failed: $out $($st.instanceView.error)" }
     Write-Host $out
-    Stop-Transcript | Out-Null            # the password is shown in the window only, never in the log
-    Write-Host "`nDemo user .\$ReviewUser password (for your ONE Bastion sign-in; save it in your password manager now):" -ForegroundColor Yellow
-    Write-Host "    $userPw`n" -ForegroundColor Yellow
+    # The password goes to a Key Vault in THIS resource group (deleted with it), so whoever signs in over
+    # Bastion picks it from the vault in the portal ("Password from Azure Key Vault") and it never passes
+    # through chat. Read access: the signed-in az account only (RBAC).
+    Step 'Store the demo-user password in the review Key Vault'
+    $h = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($rgId.ToLower()))
+    $kvName = 'fbrev' + (-join ($h[0..5] | ForEach-Object { $_.ToString('x2') }))   # stable, globally unique-ish
+    try { Az keyvault show -n $kvName -g $ResourceGroup -o none }
+    catch { Az keyvault create -n $kvName -g $ResourceGroup -l $Location --enable-rbac-authorization true --retention-days 7 -o none }
+    $kvId = (AzJson keyvault show -n $kvName -g $ResourceGroup).id
+    $me = "$(Az ad signed-in-user show --query id -o tsv)".Trim()
+    try { Az role assignment create --assignee-object-id $me --assignee-principal-type User --role 'Key Vault Secrets Officer' --scope $kvId -o none } catch { Write-Warning "role assignment: $_" }
+    $pwFile = SecretFile $userPw
+    $stored = $false
+    for ($i = 1; $i -le 8 -and -not $stored; $i++) {   # RBAC takes a minute or two to apply
+      try { Az keyvault secret set --vault-name $kvName -n 'fbreview-password' --file $pwFile --encoding utf-8 -o none; $stored = $true }
+      catch { Start-Sleep -Seconds 20 }
+    }
+    if (-not $stored) { throw "could not store the password in $kvName" }
     $userPw = $null
-    Start-Transcript -Path $log -Append | Out-Null
+    Write-Host "demo-user password stored: vault $kvName, secret fbreview-password"
     SetStage 'user'; $stage = 'user'
     Step 'Restart for auto-logon'
     Az vm restart -g $ResourceGroup -n $Name -o none
@@ -245,7 +260,7 @@ try {
   Step 'Done'
   Write-Host @"
 Next, Majid only:
- 1. Portal > $Name > Connect > Bastion (Developer). Sign in as .\$ReviewUser with the password shown above.
+ 1. Portal > $Name > Connect > Bastion (Developer). User .\$ReviewUser, password from Key Vault (vault 'fbrev...' in $ResourceGroup, secret fbreview-password).
  2. Sign the Folderbird app (tray) into the REVIEWER account only. Never sign Edge or anything else into a
     Microsoft/Google account, and clear the browser's saved logins before you leave: reviewers can read it all.
  3. Close the Bastion TAB. Do not sign out of Windows (if you do, auto-logon brings the user back).
