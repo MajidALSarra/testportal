@@ -11,6 +11,15 @@ review: `team/notes/demo-pc-review-2026-10-13.md` (branch `ccr-7c9a50bf-2n2cnk`)
 (about $40-50 a month, plus the reviewer account). Every script parses in PowerShell 7.4.6 and is
 ASCII-only; none has run on Windows or Azure yet.
 
+## Reviewer account (no restart)
+
+Majid creates `openai-review@folderbird.com` himself at folderbird.com Admin > Users > Create user
+(`AdminController.CreateUser`: EmailConfirmed=true, 2FA never enabled, no App Service setting, no
+restart). Same address in Email AND Username (sign-in looks the user up by name), "Grant Admin role"
+unticked. The password goes only into that page and the OpenAI form. The `create-test-account.yml`
+workflow is not used: it changes two production settings, restarts the site and keeps the password in
+the GitHub run inputs.
+
 ## How to run (after the go)
 
 It takes 20-40 minutes and cannot run inside a 45 s Folderbird `run_command`. Either Majid opens a
