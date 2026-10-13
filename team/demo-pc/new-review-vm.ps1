@@ -76,7 +76,8 @@ function NewPassword {
 }
 # Legacy run-command exits 0 even when the in-VM script throws: check stderr AND the success marker.
 function InVm($file, $marker, [string[]]$params) {
-  $a = @('vm','run-command','invoke','-g',$ResourceGroup,'-n',$Name,'--command-id','RunPowerShellScript','--scripts',"@$here\vm\$file")
+  $path = if ([IO.Path]::IsPathRooted($file)) { $file } else { "$here\vm\$file" }
+  $a = @('vm','run-command','invoke','-g',$ResourceGroup,'-n',$Name,'--command-id','RunPowerShellScript','--scripts',"@$path")
   if ($params) { $a += '--parameters'; $a += $params }
   $r = AzJson @a
   $o = "$($r.value[0].message)".Trim(); $e = "$($r.value[1].message)".Trim()
@@ -239,10 +240,19 @@ try {
     $sha = (Get-FileHash $zip -Algorithm SHA256).Hash
     $data = [Convert]::ToBase64String([IO.File]::ReadAllBytes($zip))
     InVm 'seed-docs.ps1' 'RESET' @('Part=reset') | Out-Null
-    $chunk = 20000   # a Windows command line holds at most 32,767 characters
-    for ($i = 0; $i -lt $data.Length; $i += $chunk) {
-      InVm 'seed-docs.ps1' 'APPEND' @('Part=append', "Data=$($data.Substring($i, [Math]::Min($chunk, $data.Length - $i)))") | Out-Null
-    }
+    # Inside the VM, run-command parameters land on a cmd.exe line (8,191 chars max), so each chunk travels
+    # in the BODY of a small generated script instead (base64 has no quote characters).
+    $chunk = 45000
+    $tmpScript = Join-Path $env:TEMP 'fb-review-append.ps1'
+    try {
+      for ($i = 0; $i -lt $data.Length; $i += $chunk) {
+        $part = $data.Substring($i, [Math]::Min($chunk, $data.Length - $i))
+        Set-Content -Path $tmpScript -Encoding ASCII -Value ("`$ErrorActionPreference='Stop'`r`n" +
+          "Add-Content -Path 'C:\ProgramData\FolderbirdDemo\seed-docs.b64' -Value '$part' -NoNewline`r`n" +
+          "'APPEND:OK ' + (Get-Item 'C:\ProgramData\FolderbirdDemo\seed-docs.b64').Length")
+        Write-Host "  chunk $([int]($i / $chunk) + 1): $(InVm $tmpScript 'APPEND')"
+      }
+    } finally { Remove-Item $tmpScript -Force -ErrorAction SilentlyContinue }
     Write-Host (InVm 'seed-docs.ps1' 'SEED-DOCS' @('Part=finish', "Sha256=$sha", "ReviewUser=$ReviewUser"))
 
     Step 'Seed public-domain photos'
