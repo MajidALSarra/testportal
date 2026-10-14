@@ -64,6 +64,7 @@ If the OAuth cause turns out to need a code change (for example persisting OpenI
 
 - Who pressed Submit, and what went into the OpenAI password field: the placeholder, a 1Password link or the real password? Has the tester password changed since then? Did the rejection come with any detail or screenshot?
 - Reuse tester@folderbird.com (shared with Google Play, plan 2/2 full) or seed a separate account, for example openai-review@folderbird.com, with its own device slot? OK to rotate the password?
+  - **Answered 2026-10-14 19:52 UTC:** a separate account, **mcp-reviewer@folderbird.com** (Majid created it and signed in on fb-review). openai-review@ was only a plan; don't use it.
 - Go to spend on a new reviewer VM? Windows B2s (about $35-45 a month, matches the 'cloudpc' screenshots) or Linux B1ms (about $15 a month, but it has the write_file path bug)? For how long, and with what budget cap?
 - Keep, deallocate or delete cloudpc and folderbird-linux-demo? Was cloudpc's personal data fully removed, or is it back on your account as device 40?
 - Can you keep LAPTOP-MOGV95CM online so the revived release session and a fresh infra session can use az and Chrome? If not, will you run a script in Azure Cloud Shell?
