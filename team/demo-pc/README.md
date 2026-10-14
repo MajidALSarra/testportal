@@ -13,7 +13,7 @@ ASCII-only; none has run on Windows or Azure yet.
 
 ## Reviewer account (no restart)
 
-Majid creates `openai-review@folderbird.com` himself at folderbird.com Admin > Users > Create user
+Majid creates `mcp-reviewer@folderbird.com` himself at folderbird.com Admin > Users > Create user
 (`AdminController.CreateUser`: EmailConfirmed=true, 2FA never enabled, no App Service setting, no
 restart). Same address in Email AND Username (sign-in looks the user up by name), "Grant Admin role"
 unticked. The password goes only into that page and the OpenAI form. The `create-test-account.yml`
