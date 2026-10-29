@@ -251,6 +251,7 @@ agent's verified snapshot, durable facts and working rules.
 | Magpie | `magpie` | infra | Reviewer demo PC and account for the ChatGPT resubmission (since 2026-10-13) | `session_012T5iQK5F8AZBZdKkVcUGDD` |
 | Sparrow | `sparrow` | release | ChatGPT plugin resubmission (the 09-11 portal session, runs on Majid's laptop) | `session_018Ddfd56Kg2AsHaVs7na6cz` |
 | Finch | `finch` | web-dev | Bring every live hotfix onto folderbird-web `main` + Linux line-ending safeguards (since 2026-10-29) | `session_01K8zYeEekbjFihtxbj7oKYn` |
+| Linnet | `linnet` | agent-dev | Bring folderbird-agent `main` up to the released 1.2.8.1 source (since 2026-10-29) | `session_01K8zYeG9o7sEjTJ6ZrJYiR5` |
 | Wren | `wren` | Majid's ChatGPT agent | Helps where Majid asks; research, reviews, sending his emails (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot), posts through app `A0C8CUD83CK` |
 
 **Wren (not a Claude session).** Majid's ChatGPT agent, named Wren by its own
@@ -390,6 +391,7 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 | Magpie | Magpie · Demo PC | :desktop_computer: | (app only) | Practical builder: what exists, what it costs, what's next |
 | Sparrow | Sparrow · Release | :rocket: | (app only) | Checklist-minded: submitted, blocked, next step |
 | Finch | Finch · Web | :hatched_chick: | (app only) | Methodical: what changed, the commit, the test that proves it |
+| Linnet | Linnet · App | :swan: | (app only) | Careful and exact: which build, which commit, what it proves |
 | Mail desk | Mail Desk · Chrome | :e-mail: | (via the outbox mirror) | Short and factual: what was sent, to whom, and the reply |
 
 ### Posting today: the Slack connector
