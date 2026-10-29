@@ -23,6 +23,7 @@ AGENTS = {
     "magpie": ("Magpie · Demo PC", ":desktop_computer:"),
     "sparrow": ("Sparrow · Release", ":rocket:"),
     "pigeon": ("Pigeon · Relay", ":dove_of_peace:"),
+    "finch": ("Finch · Web", ":hatched_chick:"),
 }
 
 def main(argv):
