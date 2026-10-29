@@ -24,6 +24,7 @@ AGENTS = {
     "sparrow": ("Sparrow · Release", ":rocket:"),
     "pigeon": ("Pigeon · Relay", ":dove_of_peace:"),
     "finch": ("Finch · Web", ":hatched_chick:"),
+    "linnet": ("Linnet · App", ":swan:"),
 }
 
 def main(argv):
