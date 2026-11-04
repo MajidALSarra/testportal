@@ -376,6 +376,10 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
    'Content-Type: application/json' -d '{"channel":"C0C8GFKELQ4","timestamp":"<ts>","name":"tada"}'
    https://slack.com/api/reactions.add`. Uploading files needs the `files:write`
    scope, which the app does not have yet.
+8. All times in Riyadh time (Majid, 2026-11-04 15:41 Riyadh): every time you
+   write for Majid or the team is Riyadh time (UTC+3), for example
+   "15:41 Riyadh". Convert from UTC before posting; logs and queries stay in
+   UTC.
 
 ### Identities
 
