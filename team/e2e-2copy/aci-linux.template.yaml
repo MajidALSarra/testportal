@@ -1,0 +1,50 @@
+# ACI definition for the temporary Linux 0.2.2 test device E2E2C-LNX. c1-linux-aci.ps1 fills a copy with the address
+# and the DEVICE token (not the account password) from t-device-token.ps1 -Device lnx just before "az container create"
+# and blanks it right after; each placeholder appears exactly once, below. No public IP, no ports. The device name on the site (E2E2C-LNX) was set by that sign-in, so the
+# container's random hostname does not matter. The config files are what LinuxAgent/AgentConfig.cs reads:
+# base-url (staging; the built-in default is PRODUCTION), device-id (must equal the address used at sign-in), token.
+# After writing the token, PID 1 is replaced by a process WITHOUT FB_TOKEN in its environment (/proc/1/environ).
+apiVersion: '2021-10-01'
+location: westeurope
+name: fb-e2e2c-linux
+type: Microsoft.ContainerInstance/containerGroups
+tags: {purpose: e2e-2copy, owner: coordinator}
+properties:
+  osType: Linux
+  restartPolicy: Never
+  containers:
+  - name: agent
+    properties:
+      image: mcr.microsoft.com/dotnet/runtime-deps:8.0
+      resources:
+        requests: {cpu: 1.0, memoryInGB: 1.5}
+      environmentVariables:
+      - {name: FB_EMAIL, value: '__EMAIL__'}
+      - {name: FB_DEVICE_ID, value: '02e2e2c00001'}
+      - {name: FB_TOKEN, secureValue: '__TOKEN__'}
+      command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        export HOME=/root
+        B=https://folderbird-app-staging.azurewebsites.net
+        apt-get update -qq
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends curl >/dev/null
+        curl -fsS -o /tmp/fb.tgz "$B/beta/linux-ac4dbdafeb6b3e6b9bf80d8423f0fb93/download"
+        echo "e7cec038e98af356b6ff55244a4caad1706565c0ef52be649e961a8e6647da90  /tmp/fb.tgz" | sha256sum -c -
+        mkdir -p /opt/fb /root/.config/folderbird /root/testfiles
+        tar -xzf /tmp/fb.tgz -C /opt/fb
+        printf '%s' "$B/api" > /root/.config/folderbird/base-url
+        printf '%s' "$FB_DEVICE_ID" > /root/.config/folderbird/device-id
+        printf '%s' "$FB_EMAIL" > /root/.config/folderbird/email
+        ( umask 077; printf '%s' "$FB_TOKEN" > /root/.config/folderbird/token )
+        echo "[e2e] token file written: $(wc -c < /root/.config/folderbird/token) bytes"
+        head -c 25165824 /dev/urandom > /root/testfiles/random-24mb.bin
+        head -c 314572800 /dev/urandom > /root/testfiles/random-300mb.bin
+        printf 'Folderbird two-copy test note\n' > /root/testfiles/e2e-note.txt
+        sha256sum /root/testfiles/*
+        cd /opt/fb
+        ./folderbird status
+        echo "[e2e] site name E2E2C-LNX (set at sign-in); starting the agent"
+        exec env -u FB_TOKEN /bin/bash -c 'cd /opt/fb; while true; do ./folderbird run || true; echo "[e2e] folderbird run ended; restarting in 15 s"; sleep 15; done'

@@ -1,0 +1,229 @@
+# Two-copy staging test: setup and cleanup runbook
+
+Goal: one new throwaway account on the STAGING slot, the GitHub secrets E2E_PASSWORD and E2E_API_KEY, and two
+temporary test devices signed into it, so that staging-e2e.yml and staging-api-e2e.yml can run the two-instance test:
+
+| Device (site name) | What | Where | Address |
+|---|---|---|---|
+| E2E2C-LNX | Linux app 0.2.2 (public beta tarball, hash-checked) | Azure Container Instance fb-e2e2c-linux | 02e2e2c00001 |
+| E2E2C-WIN | Windows app 1.2.8.1 (published signed zip), test-profile mode | throwaway VM fb-e2e2c-win | 02E2E2C00002 |
+
+Both live in resource group folderbird-e2e-rg (westeurope, tag purpose=e2e-2copy); one group delete removes them.
+Reference source: folderbird-web main 91de08d, folderbird-agent main 1f14100.
+
+Nothing here has been run on Windows. Every .ps1 parses with the pwsh 7.4.6 parser and passes the repo's reserved-name
+scanner, and the files are ASCII only. b0, b2, e2, t-device-token, c1 and v4 were run under pwsh 7 against fake
+servers. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls are untested.
+
+## How to run (all steps)
+
+- **Where:** the laptop (device 39), through Folderbird run_command/write_file. It is the only place secrets exist.
+- **Setup:** first run `New-Item -ItemType Directory -Force C:\Temp\e2e | Out-Null; 'ok'`, then write_file every file
+  of this folder to `C:\Temp\e2e\<same name>`. They are ASCII; the .ps1 files use CRLF.
+- **Start a script detached**, because run_command stops after 45 s:
+  `Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\<script>.ps1'[,'-Param','value']; 'started'`
+- **Read the result:** `Get-Content C:\Temp\e2e\<script>.log -Tail 40`. Every log ends in DONE or
+  `FAILED line N: <real cause>`, followed by a `stack:` line. az/gh stderr goes to `<script>.err`, redacted.
+- **Rules:**
+  - Never Get-Content pw.txt, bootstrap.txt, apikey.txt, *-token.txt, vm-admin.txt or old-testaccount.json.
+  - Never add your own 2>&1.
+  - End inline commands with `'ok'`, never with `}`.
+- **What the scripts do for you:**
+  - Every script that touches a secret first proves C:\Temp\e2e is closed to everyone but this user and SYSTEM (by SID).
+  - Secrets reach az, gh and the VM only as files or stdin.
+  - Logs carry lengths, names and hashes only.
+- **Tags in the steps below:**
+  - [PROD-SHARED] = writes the database, Redis or Blob storage that production also uses.
+  - [SPEND] = Azure cost.
+  - Nothing here contacts the production host except the VM's one GET of https://folderbird.com/download/windows.
+- **Approvals:**
+  - Majid's go before C1 and V1 [SPEND], and before every E step (deletions).
+  - Tell Falcon before A2 and A4 (staging restarts; production untouched).
+  - Send Kestrel the D2 inputs.
+  - The destructive-command gate does not see inside a script started with Start-Process, so the go is still needed.
+
+## 0. Preflight (read-only)
+
+1. Run `mcp__Folderbird__list_devices` and confirm the laptop is online. Post the start in #folderbird-agents.
+2. Run `p0-preflight.ps1`.
+   - **Check that it logs:**
+     - the az version and account;
+     - staging and production instance names. Keep production's ids: E5 compares them. They come from ARM; the
+       production host is never contacted.
+     - staging TestAccount__* names, stickiness and the seeded address;
+     - whether folderbird-e2e-rg exists;
+     - quota;
+     - the gh path and auth exit code, repo secret names, and the last 3 runs of both e2e workflows;
+     - free space on C:;
+     - staging /healthz/ready;
+     - which secret files already exist.
+   - **Stop if any of these is true:**
+     - gh is NOT FOUND, or az does not answer.
+     - A staging-e2e or staging-api-e2e run is in progress or queued.
+     - E2E_PASSWORD or E2E_API_KEY exist and someone else may be using them. Overwriting cannot be undone; ask Kestrel.
+     - folderbird-e2e-rg exists without being from this procedure.
+     - pw.txt or apikey.txt already hold a value.
+
+## A. Test account (password never in App Service)
+
+| Step | Script | Touches | Check that proves it | Stop if |
+|---|---|---|---|---|
+| A1 | `a1-account.ps1` (`-Email e2e-2copy-b@folderbird.com` only if A3 says the address is taken) | laptop files only | `locked: inheritance off, only <SID> and S-1-5-18`; `pw.txt and bootstrap.txt written: 32 and 32 chars`; DONE | icacls or the ACL check fails; a password file already holds a value |
+| A2 | `a2-seed-settings.ps1` (tell Falcon first) | [PROD-SHARED] staging app settings get the address + the BOOTSTRAP value via `--settings @file` (values only; stickiness untouched); staging restarts, runs the schema batch, seeder writes one AspNetUsers row | `before:` lines (old names, stickiness, address); `after: TestAccount__Email = <ours>`; DONE | set fails; staging previously seeded something unexpected (WARNING line) |
+| A3 | `q-seed.ps1` (~1 min after A2; runs up to ~25 min) | read-only (staging health + Log Analytics) | `staging ready`; `seeder| ... created pre-verified account <ours>` (Where=staging); `VERDICT: account created` | `marked email-confirmed` (someone registered the address: fresh folder, A1 `-Email`); `FAILED to create` with no created line (password rule) |
+| B0 | `b0-set-password.ps1` | [PROD-SHARED] the account's password hash: bootstrap -> pw.txt via /Manage/ChangePassword | `password changed ... ChangePasswordSuccess`; `sign-in with pw.txt in a fresh session: ok`; `bootstrap.txt blanked`; DONE | the bootstrap value AND pw.txt both refused (account not ours / not created) |
+| A4 | `a4-restore-settings.ps1` right after B0 (tell Falcon) | [PROD-SHARED] staging restarts again; old TestAccount__* values put back with `--settings` (ours deleted if staging had none) | `now:` lines equal the `before:` lines (checked by the script); `TestAccount__Email = <old address>`; `old-testaccount.json blanked`; DONE; then staging /healthz/ready is ready | any mismatch (the script refuses DONE) |
+
+Notes:
+- **Two instances:** if staging runs two instances, the second may log `FAILED to create ... is already taken` or
+  `error (startup continues)`. That is harmless when a `created` line exists.
+- **What App Service ends up holding:** after B0, the value in App Service, in its config snapshots and in anything
+  that read it (connector-smoke reads TestAccount__Password) is a dead password.
+
+## B. GitHub secrets and the API key
+
+| Step | Script | Touches | Check | Stop if |
+|---|---|---|---|---|
+| B1 | `b-set-secret.ps1 -Secret E2E_PASSWORD` (only after B0 DONE) | GitHub repo secret, value fed to `gh secret set` on stdin | `gh secret set E2E_PASSWORD: exit 0 (32 chars ...)` and a fresh `gh secret list` line | gh exit not 0 |
+| B2 | `b2-mint-key.ps1` (after C1 AND C2 are online) | [PROD-SHARED] one ApiKeys row; the previous key in apikey.txt is revoked first | `device on the account:` both names; `key ... 52 chars, 1 day, device ids <win>,<lnx>`; `the key sees:` exactly E2E2C-LNX and E2E2C-WIN; DONE | either device missing or duplicated; key not shown (TempData lost: revoke the named row by hand on /Manage/ApiKeys) |
+| B3 | `b-set-secret.ps1 -Secret E2E_API_KEY` | GitHub repo secret | as B1 | as B1 |
+
+Key details:
+- **Scope:** the key is bound to the two test devices (deviceScope=selected). Its scopes are devices:read, browse,
+  download, upload and exec, exactly what staging-api-e2e uses.
+- **Lifetime:** 24 h. If testing runs longer, run B2 and B3 again.
+
+## C1. Linux 0.2.2 in Azure Container Instances  [SPEND about $0.06/h, Majid's go]
+
+| Step | Script | Touches | Check | Stop if |
+|---|---|---|---|---|
+| C1a | `t-device-token.ps1 -Device lnx` | [PROD-SHARED] Devices row E2E2C-LNX (platform linux), Redis presence | `signed in E2E2C-LNX (02e2e2c00001) ... token N chars` | LoginFailed/LockedOut/DeviceLimitReached (printed), HTTP 429 (wait 60 s) |
+| C1b | `c1-linux-aci.ps1` (`-Recreate` to replace an existing container, after a new C1a) | [SPEND] rg folderbird-e2e-rg (created with the tag, or accepted only with it) + container group; [PROD-SHARED] the device polls staging | `attempt 1 ...`; `lnx-token.txt blanked`; `container: Running`; DONE | 3 failed creates (read c1-linux-aci.err) |
+| C1c | `aci-logs.ps1` (2-3 min later; also inline) | read-only | `aci| /tmp/fb.tgz: OK`; `token file written: N bytes`; `connected`; `VERDICT: archive hash True; token file True; connected True`; two `linux E2E2C-LNX` lines in hashes.txt | hash mismatch: stop and report (the published blob changed). Do NOT switch to the production host; both slots serve the same blob. Also stop on `lost contact` / `session no longer valid`. |
+
+What the container receives and does:
+- **Inputs:** the device token as an ACI secureValue. The account password never leaves the laptop.
+- **Agent setup:** it writes base-url (staging), device-id and token, then runs the agent as root. PID 1 is first
+  replaced by a process without the token in its environment.
+- **Name:** the site name E2E2C-LNX was set at sign-in, so the container hostname does not matter.
+
+## C2. Windows 1.2.8.1 on a throwaway VM  [SPEND about $0.23/h D2s_v4 or $0.07/h B2s, Majid's go]
+
+| Step | Script | Touches | Check | Stop if |
+|---|---|---|---|---|
+| V1 | `v1-vm-create.ps1` (`-Size Standard_B2s` for the cheap one) | [SPEND] VM, disk, NIC, Standard public IP (outbound only), NSG with NO custom rule, VNet, all in folderbird-e2e-rg; vm-admin.txt on the laptop | `vm created`; `NSG ...: 0 custom rules ... attached to the NIC`; `auto-shutdown schedules ... 0`; quota and list price lines; DONE | quota/size refusal; NSG has a rule |
+| V2 | `v2-vm-provision.ps1` (+ `vm-provision.template.ps1`) | inside the VM only, as SYSTEM | `vm| zip ok`; both exes `Valid, signer Tair Foundation For CIT, timestamped`, v1.2.8.1; user fbe2e created (not admin); task FolderbirdE2ECopy; `PROVISION DONE`; two `windows E2E2C-WIN` lines in hashes.txt | any `PROVISION FAILED` |
+| V3 | `t-device-token.ps1 -Device win` | [PROD-SHARED] Devices row E2E2C-WIN (no platform = Windows), Redis presence | `signed in E2E2C-WIN (02E2E2C00002) ... token N chars` | as C1a |
+| V4 | `v4-vm-token.ps1` (+ `vm-token.template.ps1`) | inside the VM: host.txt (fbe2e + SYSTEM only), then VM restart | `vm-token.ps1 blanked`; `vm| INJECT DONE host.txt N chars, ACL ...`; `win-token.txt blanked`; DONE | `INJECT FAILED` (win-token.txt is kept: rerun V4) |
+| V5 | `v5-vm-check.ps1` (+ `vm-check.ps1`), about 3 min after V4 | read-only | `vm| sessions (quser ...): fbe2e ... Active`; `FolderbirdClient pid ... owner FB-E2E2C-WIN\fbe2e ... /startup`; `token files: host.txt present=False; host.dat present=True`; `VERDICT: app running, token migrated` | NOT READY after 4 attempts (read the wrapper / client-errors tails) |
+| V6 | `v6-vm-scrub.ps1` (+ `vm-scrub.ps1`) | inside the VM: blanks leftover copies of the injection script | `vm| SCRUB DONE blanked=N failed=0`; DONE | failed > 0 (the VM is deleted in E1 anyway) |
+
+Why the VM and not the laptop:
+- **The risk:** anyone holding E2E_PASSWORD or E2E_API_KEY can run commands on the test device.
+- **On the laptop**, that would mean Majid's az and gh sign-ins, the update-signing keys and these secret files.
+- **On the VM** it means only the non-admin user fbe2e on a machine that holds nothing.
+- **The token:** it only acts as this one device. fbe2e can decrypt it from host.dat anyway, so having it in the VM
+  gives nothing more.
+
+## D. Test files and dispatch inputs
+
+**D1.** Run `d1-fixtures.ps1` after B2.
+- Touches: [PROD-SHARED] Blob staging under transfers/ and commands through the shared Redis.
+- What it does:
+  1. Fetches test-deck.pptx and test-small.pdf at 91de08d with gh.
+  2. Checks both against the SHA-256 values in tools/e2e/fixtures/README.md.
+  3. Uploads both to BOTH devices with the e2e key, through `POST /api/v1/devices/{id}/files/upload`.
+- **Check:**
+  - four lines `<file> -> <device> <folder>: HTTP 200, delivered True, verified ...`;
+  - four `fixture` lines in hashes.txt;
+  - DONE.
+- **Stop if:** a device is offline, or any upload answers non-200 (504 = the PC did not fetch it).
+
+**D2.** Dispatch inputs (hashes.txt has the per-device SHA-256s; hashes are not secret).
+- Dispatch ONE run at a time with `mcp__github__actions_run_trigger`, and wait for each to start. Both workflows share
+  one concurrency group, and a burst cancels the runs in the middle.
+- First run `staging-e2e` with action=instances and email=<e2e address> to list the instance ids A and B. With one
+  staging instance, every run is same-instance.
+- Staging's instance count is a separate approval and not part of this runbook.
+
+| Input | E2E2C-WIN | E2E2C-LNX |
+|---|---|---|
+| staging-e2e `email` | e2e-2copy@folderbird.com (or the A1 -Email value) | same |
+| `device_name` (both workflows; never the `cloudpc` default) | E2E2C-WIN | E2E2C-LNX |
+| staging-e2e `folder` | default `C:\FolderbirdStaging\testfiles` | `testfiles` (relative to /root; untested walk) |
+| staging-api-e2e `folder` | default | `/root/testfiles` |
+| `file_name` / `expected_sha256` | `random-24mb.bin` / the `windows E2E2C-WIN random-24mb.bin` hash | `random-24mb.bin` / the `linux E2E2C-LNX random-24mb.bin` hash |
+| staging-api-e2e `text_file` | `e2e-note.txt` | `e2e-note.txt` |
+| staging-e2e `browser_instance` / staging-api-e2e `instance` | A, then B | A, then B |
+
+Runs per device, each once with the pin on A and once with the pin on B:
+
+| Workflow | action | file_name | expected_sha256 | Other |
+|---|---|---|---|---|
+| staging-e2e | download | default | the device's hash | |
+| staging-e2e | edit | `e2e-note.txt` (it OVERWRITES that file) | blank | |
+| staging-e2e | preview | `test-deck.pptx` | blank | |
+| staging-e2e | preview | `test-small.pdf` | blank | add a low_disk=true run |
+| staging-e2e | rename | default | | |
+| staging-e2e | upload | default | | |
+| staging-e2e | console | default | | |
+| staging-api-e2e | | | the device's hash | steps blank (all), text_file=e2e-note.txt |
+
+- **Totals:** 16 runs per device, 32 in all, plus the one instances run.
+- **Leftovers:** upload runs leave `e2e-upload-*.bin` and `e2e-api-*.bin` behind. They vanish with the devices in E1.
+
+## E. Cleanup (Majid's go for each step)
+
+| Step | Script | Touches | Check | Stop if |
+|---|---|---|---|---|
+| E1 | `e1-delete-rg.ps1` (first, so both agents stop polling: deleting a device row does NOT sign an agent out) | [SPEND stops] deletes folderbird-e2e-rg (VM, disk, NIC, IP, NSG, VNet, container); refuses unless tagged purpose=e2e-2copy | `in the group:` list; `... is gone`; DONE | still present after 25 min (check the portal) |
+| E2 | `e2-account-cleanup.ps1` (default deletes the account; `-KeepAccount` removes the devices, revokes the key and rotates the password to a value that is never stored) | [PROD-SHARED] deletes the account's Devices and ApiKeys rows and the user | `DeleteAccount -> 302 to "/"`, then `verified: a fresh sign-in with pw.txt is refused` and `verified: the old key gets 401` | it refuses while staging still seeds our address (A4 not done) or while the rg exists; any verification fails |
+| E3 | `e3-delete-secrets.ps1` | deletes repo secrets E2E_API_KEY and E2E_PASSWORD | `neither E2E_API_KEY nor E2E_PASSWORD is listed`; DONE | still listed |
+| E4 | `e4-scrub-laptop.ps1` | blanks every secret file in C:\Temp\e2e | `blanked ...` lines and the `left:` list; DONE | |
+| E5 | `p0-preflight.ps1` again | read-only | production instance ids equal step 0 (ARM); staging ready; rg does not exist; neither E2E_* secret listed | production instance id changed (report it: amber, not caused here) |
+| E6 | inline, gate-guarded: `Remove-Item -LiteralPath C:\Temp\e2e -Recurse -Force; 'ok'` (pass confirm_destructive only after Majid agrees) | laptop folder | `Test-Path C:\Temp\e2e` is False | |
+
+Then post `done` in #folderbird-agents.
+
+What stays behind on purpose:
+- `mac:token:02E2E2C0000x` Redis keys, which expire after 30 days.
+- NetworkWatcherRG, if Azure created it. It costs nothing; E1 logs it.
+- The older e2e-staging@folderbird.com account and its devices, which this procedure never touches.
+
+## Not verified (first run will tell)
+
+**Windows PowerShell 5.1 on the laptop**
+- None of the scripts has run under Windows PowerShell 5.1.
+- .NET Framework's CookieContainer may not keep the Set-Cookie from a 302 (TempData). If not, B2 cannot read the key.
+- Whether gh secret set reads stdin as expected.
+
+**Seeder log query**
+- The Log Analytics query in q-seed (`_ResourceId contains '/slots/'` is used only as a label).
+
+**Linux container**
+- That runtime-deps:8.0 can apt-get curl on ACI.
+- That the staging /beta route serves the 0.2.2 blob (the hash check guards this).
+- The browser walk to `testfiles` on Linux.
+
+**Windows VM**
+- How Run Command keeps or re-runs scripts across a reboot. vm-token now skips a second run with the same token.
+- That autologon gives an active session with no console viewer, and that the logon task starts the tray app in it.
+- Patch reboots.
+- B2s with Trusted Launch.
+- Whether a VM can fetch folderbird.com/download/windows (staging is the fallback).
+- Azure may keep a copy of the run-command request (the token). Nothing here can blank it; E2 kills the token.
+
+**Prices**
+- The prices above are estimates; V1 logs the list price.
+
+## Deferred hardening (needs a repo change, not done here)
+
+The secrets are repo-level, so any workflow run on any branch of folderbird-web can read them. With the devices on
+throwaway hosts, the remaining exposure is the throwaway account until E2.
+
+To narrow it:
+1. Create a GitHub Environment limited to `main`.
+2. Set both secrets there with `gh secret set --env <name>`.
+3. Add `environment: <name>` to the jobs in staging-e2e.yml and staging-api-e2e.yml.
+4. Add an Entra federated credential for subject `repo:MajidALSarra/folderbird-web:environment:<name>`. Without it,
+   staging-e2e's Log Analytics step loses its Azure login.
