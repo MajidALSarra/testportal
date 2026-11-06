@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Re-post the Chrome mail desk's Slack posts under its own name.
+"""Re-post a connector-only teammate's Slack posts under its own name.
 
-The mail desk ("Email sending setup", a Claude in Chrome chat) can post in
-Slack only through the Claude Slack connector, which posts as Majid. So it
-posts as a reply in one outbox thread, and this script copies each new post
-there to #folderbird-agents as "Mail Desk · Chrome", then marks the original
-with :white_check_mark:.
+Some teammates can post in Slack only through the Claude Slack connector,
+which posts as Majid: the mail desk ("Email sending setup", a Claude in Chrome
+chat) and Oriole (the "Folderbird OCI architecture optimization" session on
+Majid's laptop). Each posts as a reply in its own outbox thread, and one copy
+of this script per outbox copies each new post there to #folderbird-agents
+under that teammate's name (default "Mail Desk · Chrome"), then marks the
+original with :white_check_mark:.
 
 A first line of `thread <ts>` sends the post into that thread; otherwise it
 goes to the channel's top level. The connector's "Sent using Claude" footer
 is dropped.
 
   python3 team/tools/slack_mirror.py --outbox <thread ts> --dir <state dir> [--hours 24]
+                                     [--name "Oriole · Oracle Cloud" --icon :sunrise:]
+
+Give each outbox its own --dir: the lock and the last-seen state live there.
 
 The cloud gateway adds the bot token, as for slack_post.py.
 """
@@ -27,7 +32,7 @@ import urllib.request
 
 CHANNEL = "C0C8GFKELQ4"
 CONNECTOR_APP = "A08SF47R6P4"  # the Claude Slack connector, posting as Majid
-NAME, ICON = "Mail Desk · Chrome", ":e-mail:"
+NAME, ICON = "Mail Desk · Chrome", ":e-mail:"  # defaults; --name / --icon override
 CAFILE = "/root/.ccr/ca-bundle.crt"
 CTX = ssl.create_default_context(cafile=CAFILE if os.path.exists(CAFILE) else None)
 
@@ -50,7 +55,7 @@ def clean(text):
     return text, None
 
 
-def run(outbox, d, hours):
+def run(outbox, d, hours, name=NAME, icon=ICON):
     os.makedirs(d, exist_ok=True)
     lock = open(os.path.join(d, "mirror.lock"), "a+")
     try:
@@ -64,7 +69,7 @@ def run(outbox, d, hours):
     except (OSError, ValueError, KeyError):
         last = f"{time.time() - 60:.6f}"
     log = open(os.path.join(d, "mirror.log"), "a", buffering=1)
-    log.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} start outbox={outbox} pid={os.getpid()}\n")
+    log.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} start outbox={outbox} as={name} pid={os.getpid()}\n")
     stop = time.time() + hours * 3600
     while time.time() < stop:
         try:
@@ -74,7 +79,7 @@ def run(outbox, d, hours):
                     continue
                 if m.get("app_id") == CONNECTOR_APP and not m.get("bot_id"):
                     body, target = clean(m.get("text", ""))
-                    post = {"channel": CHANNEL, "text": body, "username": NAME, "icon_emoji": ICON}
+                    post = {"channel": CHANNEL, "text": body, "username": name, "icon_emoji": icon}
                     if target:
                         post["thread_ts"] = target
                     res = api("chat.postMessage", post=post)
@@ -95,4 +100,4 @@ if __name__ == "__main__":
     opt = lambda n, dflt: a[a.index(n) + 1] if n in a and a.index(n) + 1 < len(a) else dflt
     if "--outbox" not in a:
         sys.exit(__doc__)
-    run(opt("--outbox", ""), opt("--dir", "."), float(opt("--hours", "24")))
+    run(opt("--outbox", ""), opt("--dir", "."), float(opt("--hours", "24")), opt("--name", NAME), opt("--icon", ICON))

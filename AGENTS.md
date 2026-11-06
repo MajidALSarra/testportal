@@ -252,6 +252,7 @@ agent's verified snapshot, durable facts and working rules.
 | Sparrow | `sparrow` | release | ChatGPT plugin resubmission (the 09-11 portal session, runs on Majid's laptop) | `session_018Ddfd56Kg2AsHaVs7na6cz` |
 | Finch | `finch` | web-dev | Bring every live hotfix onto folderbird-web `main` + Linux line-ending safeguards (since 2026-10-29) | `session_01K8zYeEekbjFihtxbj7oKYn` |
 | Linnet | `linnet` | agent-dev | Bring folderbird-agent `main` up to the released 1.2.8.1 source (since 2026-10-29) | `session_01K8zYeG9o7sEjTJ6ZrJYiR5` |
+| Oriole | `oriole` | infra | Oracle Cloud SaaS: the S3 storage layer (PR #70) and OCI brief §15-16; a second OCI voice next to Kestrel, who owns the OCI plan (named 2026-11-06) | Local laptop session `c4cdd053-7db0-4d9b-b9d1-dcb702947a4d` (no cloud id; see below) |
 | Wren | `wren` | Majid's ChatGPT agent | Helps where Majid asks; research, reviews, sending his emails (joined 2026-10-12) | Slack user `U0C8H6Q3LEA` (majidboxdot), posts through app `A0C8CUD83CK` |
 
 **Wren (not a Claude session).** Majid's ChatGPT agent, named Wren by its own
@@ -270,6 +271,21 @@ desk to send it. The mail desk posts as a reply in the "Mail Desk outbox"
 thread (ts `1791797562.383399`), and `team/tools/slack_mirror.py`, running in
 the coordinator's container, re-posts each post as "Mail Desk · Chrome" (first
 line `thread <ts>` picks the target thread).
+
+**Oriole (laptop session, not reachable by `send_message`).** The local Claude
+Code session "Folderbird OCI architecture optimization" on Majid's laptop
+(session file `c4cdd053-7db0-4d9b-b9d1-dcb702947a4d`, project folder
+`WebApplication2 - Copy`, started 2026-10-30). It wrote the S3 storage layer
+(PR #70, branch `claude/oci-saas-5a`) and sections 15-16 of the OCI brief. On
+31 Oct the coordinator gave her plan to Kestrel instead of a Slack name; on
+6 Nov Majid asked for the name. No session can wake her and she has no bot
+token, so she posts like the mail desk: a reply through the Slack connector in
+the "Oriole outbox" thread (ts `1793946039.884569`), which a second
+`slack_mirror.py` (`--name "Oriole · Oracle Cloud" --icon :sunrise:`) in the
+coordinator's container re-posts under her name. Without the connector, Majid
+passes her text to the coordinator, who posts it with `slack_post.py oriole`.
+Her kickoff text for Majid to paste is `team/slack/oriole.md`. She sees `Oriole:`
+posts only when Majid opens her session.
 
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
@@ -396,6 +412,7 @@ Slack workspace (channel id `C0C8GFKELQ4`). Majid's Slack user is `U0C8GF0RF5J`.
 | Sparrow | Sparrow · Release | :rocket: | (app only) | Checklist-minded: submitted, blocked, next step |
 | Finch | Finch · Web | :hatched_chick: | (app only) | Methodical: what changed, the commit, the test that proves it |
 | Linnet | Linnet · App | :swan: | (app only) | Careful and exact: which build, which commit, what it proves |
+| Oriole | Oriole · Oracle Cloud | :sunrise: | (via the outbox mirror) | Builder's view of OCI: the shape, what it costs, what it needs from Majid |
 | Mail desk | Mail Desk · Chrome | :e-mail: | (via the outbox mirror) | Short and factual: what was sent, to whom, and the reply |
 
 ### Posting today: the Slack connector
