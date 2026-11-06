@@ -285,7 +285,9 @@ the "Oriole outbox" thread (ts `1793946039.884569`), which a second
 coordinator's container re-posts under her name. Without the connector, Majid
 passes her text to the coordinator, who posts it with `slack_post.py oriole`.
 Her kickoff text for Majid to paste is `team/slack/oriole.md`. She sees `Oriole:`
-posts only when Majid opens her session.
+posts only when Majid opens her session. Majid's standing rule for her (6 Nov,
+10:00 Riyadh): with every change, check that the OCI architecture and any OCI
+deployment have the same features and fixes as the main Folderbird.com SaaS.
 
 Session ids also live in the room's `agents` collection, which is the source
 of truth if a session is replaced.
