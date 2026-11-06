@@ -3,8 +3,10 @@
 # the PUBLIC signed 1.2.8.1 zip (folderbird.com/download/windows, the one allowed production GET; staging's own
 # /download/windows as fallback), verifies size, SHA-256, Authenticode signer, timestamp and FileVersion, creates the
 # non-admin autologon user fbe2e, writes the test profile and test files, and registers the logon task.
-# Appends the two test-file hashes to hashes.txt. Does NOT reboot: the token goes in first (v4 restarts the VM).
-# Safe to run again.
+# Appends the test-file hashes to hashes.txt. Does NOT reboot: the token goes in first (v4 restarts the VM).
+# It also turns on Windows Search (the server's Windows search_files needs it). Safe to run again: on a VM that already
+# has its token (V4 done) it is the way to add Windows Search afterwards, and when the VM then prints RESTART NEEDED this
+# script restarts the VM (autologon and the logon task start the app again; host.dat survives). Then run V5.
 # Run detached:
 #   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\v2-vm-provision.ps1'
 $NAME = 'v2-vm-provision'
@@ -162,6 +164,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 # ---- vm block: the test VM and run-command (generated; the same in v2, v4, v5, v6) ----
 $VM = 'fb-e2e2c-win'
@@ -206,5 +217,11 @@ try {
     if ($m.Success) { Add-Content -LiteralPath $hf -Value ('windows E2E2C-WIN  {0}  {1}  {2}' -f $m.Groups[1].Value, $m.Groups[2].Value, $m.Groups[3].Value) }
   }
   L 'test-file hashes appended to hashes.txt'
-  L 'DONE - next: t-device-token.ps1 -Device win, then v4-vm-token.ps1'
+  if ($res.Out -match 'RESTART NEEDED:') {
+    L ('restarting {0} so Windows Search starts (1-3 minutes; the test device is offline meanwhile)' -f $VM)
+    AZ vm restart -g $RG -n $VM -o none | Out-Null
+    if ($script:AZRC -ne 0) { throw ('vm restart failed ({0}) - see {1}; restart the VM another way, then run v5-vm-check.ps1' -f $script:AZRC, $ERRF) }
+    L 'VM restarted - run v5-vm-check.ps1 in about 3 minutes (look for the WSearch line)'
+  }
+  L 'DONE - next on a first provision: t-device-token.ps1 -Device win, then v4-vm-token.ps1 (on a rerun after V4: v5-vm-check.ps1)'
 } catch { Fail $_ }

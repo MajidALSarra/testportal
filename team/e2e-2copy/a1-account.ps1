@@ -162,6 +162,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 try {
   if ($Email -notmatch '^e2e-2copy[a-z0-9-]*@folderbird\.com$') { throw 'the e2e address must look like e2e-2copy...@folderbird.com (never e2e-staging, tester or a reviewer address)' }
@@ -172,7 +181,7 @@ try {
   L ('{0} locked: inheritance off, only {1} (this user) and S-1-5-18 (SYSTEM)' -f $D, $me)
   foreach ($fn in 'pw.txt', 'bootstrap.txt') {
     $p = Join-Path $D $fn
-    if ((Test-Path -LiteralPath $p) -and [IO.File]::ReadAllText($p).Trim()) { throw ($fn + ' already holds a value - refusing to overwrite a password that may be in use (finish E, remove the folder, start again)') }
+    if ((Test-Path -LiteralPath $p) -and [IO.File]::ReadAllText($p).Trim()) { throw ($fn + ' already holds a value - refusing to overwrite a password that may be in use (finish the RUNBOOK cleanup or abort sequence first; E4 refuses while old-testaccount.json still holds a value, so run A4 before it)') }
   }
   $pw = NewPw 32
   $boot = NewPw 32

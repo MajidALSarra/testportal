@@ -3,8 +3,17 @@
 # staging had none. Runs right after B0, so the bootstrap value spends minutes, not the whole test, in App Service.
 # Reads the result back and refuses to report DONE unless the names, their stickiness and the address match the backup.
 # Then blanks old-testaccount.json (it holds the OLD account's password).
+# * -Abort: the way back when the test is abandoned after A2 but before B0 finished (q-seed or b0 stopped, staging
+#   trouble, Majid stops it). It only skips the "B0 must be done" check; the restore itself never depended on B0.
+#   Then follow the RUNBOOK abort sequence (E1 if C1/V1 ran, E2, E3 if B1/B3 ran, E4). Never remove or replace this
+#   folder while old-testaccount.json holds a value: it is the only copy of staging's original values.
+# * The site-wide sticky-name list is shared with production and is never written here. 'az webapp config appsettings
+#   delete' would remove a deleted name from that list (azure-cli 2.86 delete_app_settings, even with --slot), so a name
+#   of ours that is in the list is BLANKED with --settings (the seeder ignores a blank address or password) instead of
+#   deleted; any other delete is checked against the list before and after.
 # Run detached:
-#   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\a4-restore-settings.ps1'
+#   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\a4-restore-settings.ps1'[,'-Abort']
+param([switch]$Abort)
 $NAME = 'a4-restore-settings'
 # ---- common block: the SAME text in every laptop script (generated; change all copies together) ----
 # Rules it enforces: az and gh run through RunExe (no shell, every argument quoted for the C runtime, stdin closed so a
@@ -160,10 +169,19 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 try {
   CheckLock
-  RequireB0
+  if ($Abort) { L 'ABORT mode: restoring staging settings without the B0 check (the test is being abandoned)' } else { RequireB0 }
   $bk = Join-Path $D 'old-testaccount.json'
   if (-not (Test-Path -LiteralPath $bk)) { throw 'old-testaccount.json is missing - nothing to restore from' }
   $old = [IO.File]::ReadAllText($bk)
@@ -173,9 +191,15 @@ try {
   foreach ($s in $list) { if ($s.name -eq 'TestAccount__Password') { $script:SECRETS += [string]$s.value } }
   $ours = @('TestAccount__Email', 'TestAccount__Password')
   $names = @($list | ForEach-Object { [string]$_.name })
-  if ($list.Count -gt 0) {
-    $h = @{}
-    foreach ($s in $list) { $h[[string]$s.name] = [string]$s.value }
+  $stickyBefore = @(StickyNames)
+  L ('site-wide sticky app-setting names before (shared with production, {0}): {1}' -f $stickyBefore.Count, $(if ($stickyBefore.Count) { $stickyBefore -join ',' } else { 'none' }))
+  $extra = @($ours | Where-Object { $names -notcontains $_ })
+  $blank = @($extra | Where-Object { $stickyBefore -contains $_ })
+  $del = @($extra | Where-Object { $stickyBefore -notcontains $_ })
+  $h = @{}
+  foreach ($s in $list) { $h[[string]$s.name] = [string]$s.value }
+  foreach ($n in $blank) { $h[$n] = '' }
+  if ($h.Count -gt 0) {
     $f = Join-Path $D 'restore.json'
     try {
       [IO.File]::WriteAllText($f, ($h | ConvertTo-Json -Compress))
@@ -184,24 +208,34 @@ try {
       $rc = $script:AZRC
     } finally { [IO.File]::WriteAllText($f, '') }
     if ($rc -ne 0) { throw ('restore failed ({0}) - see {1}' -f $rc, $ERRF) }
-    L ('restored values of: ' + ($names -join ', '))
+    if ($names.Count) { L ('restored values of: ' + ($names -join ', ')) }
+    if ($blank.Count) { L ('BLANKED, not deleted (staging had none before, but the name is in the site-wide sticky list; a delete would change production''s list): ' + ($blank -join ', ')) }
   }
-  $extra = @($ours | Where-Object { $names -notcontains $_ })
-  if ($extra.Count -gt 0) {
-    AZ webapp config appsettings delete -g folderbird-rg -n folderbird-app --slot staging --setting-names @extra -o none | Out-Null
-    if ($script:AZRC -ne 0) { throw ('delete of {0} failed ({1}) - see {2}' -f ($extra -join ','), $script:AZRC, $ERRF) }
-    L ('deleted (staging had none before): ' + ($extra -join ', '))
+  if ($del.Count -gt 0) {
+    AZ webapp config appsettings delete -g folderbird-rg -n folderbird-app --slot staging --setting-names @del -o none | Out-Null
+    if ($script:AZRC -ne 0) { throw ('delete of {0} failed ({1}) - see {2}' -f ($del -join ','), $script:AZRC, $ERRF) }
+    L ('deleted (staging had none before, not in the sticky list): ' + ($del -join ', '))
   }
+  $stickyAfter = @(StickyNames)
+  if (($stickyAfter -join ',') -ne ($stickyBefore -join ',')) { throw ('the site-wide sticky list CHANGED during this run: before [{0}], after [{1}] - production''s configuration differs; tell Falcon at once' -f ($stickyBefore -join ','), ($stickyAfter -join ',')) }
+  L ('site-wide sticky list unchanged ({0} names)' -f $stickyAfter.Count)
   $now = @(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?starts_with(name,'TestAccount__')].[name, to_string(slotSetting)]" -o tsv)
   foreach ($line in $now) { L ('now: ' + $line) }
-  $want = @($list | ForEach-Object { ("{0}`t{1}" -f $_.name, ([string]$_.slotSetting).ToLowerInvariant()) } | Sort-Object)
+  $want = @(@($list | ForEach-Object { ("{0}`t{1}" -f $_.name, ([string]$_.slotSetting).ToLowerInvariant()) }) + @($blank | ForEach-Object { "$_`ttrue" }) | Sort-Object)
   $got = @($now | ForEach-Object { $_.Trim() } | Sort-Object)
   if (($want -join '|') -ne ($got -join '|')) { throw ('names/stickiness after restore [{0}] differ from the backup [{1}]' -f ($got -join ', '), ($want -join ', ')) }
-  $oldEmail = [string](@($list | Where-Object { $_.name -eq 'TestAccount__Email' } | ForEach-Object { $_.value }) | Select-Object -First 1)
+  foreach ($n in $blank) {
+    $v = (@(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?name=='$n'].value | [0]" -o tsv) -join '').Trim()
+    if ($v) { $v = $null; throw ('{0} still holds a value after blanking (value not shown)' -f $n) }
+    L ('{0} reads back blank' -f $n)
+  }
+  # '' + (...), not [string](...): a cast of an EMPTY pipeline gives $null, and '' -ne $null would fail a correct restore.
+  $oldEmail = '' + (@($list | Where-Object { $_.name -eq 'TestAccount__Email' } | ForEach-Object { $_.value }) | Select-Object -First 1)
   $nowEmail = (@(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?name=='TestAccount__Email'].value | [0]" -o tsv) -join '').Trim()
   if ($nowEmail -ne $oldEmail) { throw ('TestAccount__Email is {0}, the backup says {1}' -f $nowEmail, $oldEmail) }
-  L ('TestAccount__Email = {0} (as before A2)' -f $(if ($nowEmail) { $nowEmail } else { '(unset)' }))
+  L ('TestAccount__Email = {0} (as before A2)' -f $(if ($nowEmail) { $nowEmail } else { '(unset or blank)' }))
   [IO.File]::WriteAllText($bk, '')
   L 'old-testaccount.json blanked'
-  L 'DONE - the staging slot is restarting; check /healthz/ready, then b-set-secret.ps1 -Secret E2E_PASSWORD'
+  if ($Abort) { L 'DONE (abort) - the staging slot is restarting; check /healthz/ready, then the RUNBOOK abort sequence: E1 if C1/V1 ran, E2, E3 if B1/B3 ran, E4' }
+  else { L 'DONE - the staging slot is restarting; check /healthz/ready, then b-set-secret.ps1 -Secret E2E_PASSWORD' }
 } catch { Fail $_ }

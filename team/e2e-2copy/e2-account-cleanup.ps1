@@ -7,6 +7,9 @@
 # random value that is never stored, so E2E_PASSWORD is dead either way.
 # Refuses while staging would re-seed the account (TestAccount__Email still ours = A4 not done) or while the test
 # devices still exist (run e1-delete-rg.ps1 first). Needs Majid's go (a deletion).
+# Abandoned before B0 finished (RUNBOOK abort sequence, after a4-restore-settings.ps1 -Abort): bootstrap.txt still holds
+# a value and the account, if the seeder created it, still has THAT password. So when pw.txt does not sign in, the
+# bootstrap value is tried and used for the deletion, and both values must be refused afterwards.
 # Run detached:
 #   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\e2-account-cleanup.ps1'
 param([switch]$KeepAccount)
@@ -165,6 +168,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 # ---- web block: cookie sign-in to the STAGING site (generated; the same in b0, b2, e2) ----
 Add-Type -AssemblyName System.Net.Http
@@ -226,9 +238,15 @@ try {
   CheckLock
   $email = ReadEmail
   $pw = ReadSecret 'pw.txt' '^[A-Za-z0-9]{32}$'
+  $boot = ''
+  $bf = Join-Path $D 'bootstrap.txt'
+  if ((Test-Path -LiteralPath $bf) -and [IO.File]::ReadAllText($bf).Trim()) {
+    $boot = ReadSecret 'bootstrap.txt' '^[A-Za-z0-9]{32}$'
+    L 'bootstrap.txt still holds a value (B0 never finished): it is tried too, and must be refused at the end'
+  }
   $seeded = (@(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?name=='TestAccount__Email'].value | [0]" -o tsv) -join '').Trim()
   if ($script:AZRC -ne 0) { throw ('could not read the staging TestAccount__Email ({0}) - see {1}' -f $script:AZRC, $ERRF) }
-  if ($seeded -eq $email) { throw 'staging still seeds this address (A4 not done): a deleted account would come back at the next staging start - run a4-restore-settings.ps1 first' }
+  if ($seeded -eq $email) { throw 'staging still seeds this address (A4 not done): a deleted account would come back at the next staging start - run a4-restore-settings.ps1 first (with -Abort if B0 never finished)' }
   if ((@(AZ group exists -n $RG) -join '').Trim() -eq 'true') { throw ('{0} still exists - run e1-delete-rg.ps1 first so the test agents stop polling' -f $RG) }
 
   $key = ''
@@ -239,9 +257,18 @@ try {
     L ('key: POST /app/revoke -> HTTP {0} (204 = revoked, 401 = already invalid)' -f [int]$rr.StatusCode)
   }
   $c = NewClient $true
+  $cur = $pw
   $s = SignIn $c $email $pw
   L ('sign-in with pw.txt: ' + $s)
   if ($s -eq 'locked') { throw 'locked out: wait 60 s and run again' }
+  if ($s -ne 'ok' -and $boot) {
+    $c = NewClient $true
+    $s = SignIn $c $email $boot
+    L ('sign-in with the bootstrap value: ' + $s)
+    if ($s -eq 'locked') { throw 'locked out: wait 60 s and run again' }
+    if ($s -eq 'ok') { $cur = $boot }
+  }
+  $did = 'nothing signed in: no account of ours to remove'
   if ($s -eq 'ok') {
     $parsed = (Get200 $c '/Device/MyDevicesJson') | ConvertFrom-Json
     $owned = @($parsed | Where-Object { $_ -and $_.name -and -not ([string]$_.name).EndsWith(' (shared)') })
@@ -257,25 +284,35 @@ try {
       $newPw = NewPw 32
       $script:SECRETS += $newPw
       $t = Tok (Get200 $c '/Manage/ChangePassword') '/Manage/ChangePassword'
-      $r = PostForm $c '/Manage/ChangePassword' ('OldPassword=' + (Enc $pw) + '&NewPassword=' + (Enc $newPw) + '&ConfirmPassword=' + (Enc $newPw) + '&__RequestVerificationToken=' + (Enc $t))
+      $r = PostForm $c '/Manage/ChangePassword' ('OldPassword=' + (Enc $cur) + '&NewPassword=' + (Enc $newPw) + '&ConfirmPassword=' + (Enc $newPw) + '&__RequestVerificationToken=' + (Enc $t))
       $newPw = $null
       if ([int]$r.StatusCode -ne 302 -or ([string]$r.Headers.Location) -notmatch 'ChangePasswordSuccess') { throw ('ChangePassword -> HTTP {0}' -f [int]$r.StatusCode) }
       L 'all devices removed; password changed to a random value that was never stored (E2E_PASSWORD is dead)'
+      $did = 'password rotated'
     } else {
       $t = Tok (Get200 $c '/Account/DeleteAccount') '/Account/DeleteAccount'
-      $r = PostForm $c '/Account/DeleteAccount' ('password=' + (Enc $pw) + '&__RequestVerificationToken=' + (Enc $t))
+      $r = PostForm $c '/Account/DeleteAccount' ('password=' + (Enc $cur) + '&__RequestVerificationToken=' + (Enc $t))
       $code = [int]$r.StatusCode
       $loc = [string]$r.Headers.Location
       if ($code -ne 302 -or $loc -ne '/') { throw ('DeleteAccount -> HTTP {0} to "{1}" (a deletion redirects to "/"; 200 = refused)' -f $code, $loc) }
       L 'DeleteAccount -> 302 to "/" (not proof yet)'
+      $did = 'account deleted'
     }
   } else {
-    L 'pw.txt does not sign in - the account is already deleted or its password was changed; verifying'
+    L ('{0} - the account is already deleted, its password was changed, or it was never ours; verifying' -f $(if ($boot) { 'neither pw.txt nor the bootstrap value signs in' } else { 'pw.txt does not sign in' }))
   }
   $c2 = NewClient $true
   $s2 = SignIn $c2 $email $pw
   if ($s2 -ne 'refused') { throw ('a fresh sign-in with pw.txt answered "{0}" - the account still accepts the password' -f $s2) }
-  L ('verified: a fresh sign-in with pw.txt is refused ({0})' -f $(if ($KeepAccount) { 'password rotated' } else { 'account deleted' }))
+  L ('verified: a fresh sign-in with pw.txt is refused ({0})' -f $did)
+  if ($boot) {
+    $c3 = NewClient $true
+    $s3 = SignIn $c3 $email $boot
+    if ($s3 -ne 'refused') { throw ('a fresh sign-in with the bootstrap value answered "{0}" - the account still accepts it' -f $s3) }
+    L 'verified: a fresh sign-in with the bootstrap value is refused too'
+    [IO.File]::WriteAllText($bf, '')
+    L 'bootstrap.txt blanked'
+  }
   if ($key) {
     Start-Sleep -Seconds 70
     $vr = Bearer (NewClient $false) 'GET' '/api/v1/devices' $key

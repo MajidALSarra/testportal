@@ -16,7 +16,14 @@
 #     their SHA-256;
 #  6. writes the wrapper C:\FolderbirdE2E\run-e2e-copy.ps1 (sets FOLDERBIRD_PROFILE_DIR for its own process only and
 #     keeps FolderbirdClient.exe /startup running) and registers the logon task FolderbirdE2ECopy (user fbe2e,
-#     interactive, limited, no time limit, normal priority).
+#     interactive, limited, no time limit, normal priority);
+#  7. turns on Windows Search. The server answers a Windows device's search (REST /search and MCP search_files) only
+#     through the Search index (DeviceOps.SearchFilesAsync, Provider=Search.CollatorDSO, no fallback), and Windows
+#     Server has it off: the WSearch service is disabled, or the Search-Service feature is not installed at all.
+#     Without it staging-api-e2e's 'search' and 'mcp' steps fail on E2E2C-WIN with HTTP 502 / isError. The test folder
+#     is not indexed; an unindexed scope answers 200 with no results, which both steps accept. If the feature install
+#     needs a restart: on a first provision v4 restarts the VM anyway; on a rerun after v4 (host.dat exists) this prints
+#     RESTART NEEDED and v2 restarts the VM (autologon and the logon task bring the app back, host.dat survives).
 # It does NOT reboot: t-device-token.ps1 -Device win (laptop) gets the token, v4-vm-token.ps1 writes it and restarts
 # the VM.
 # Prints PROVISION DONE, or PROVISION FAILED line N: message. Full log inside the VM: C:\FolderbirdE2E\logs\provision.log
@@ -240,12 +247,43 @@ W 'wrapper stopped after 500 starts'
   $ti = Get-ScheduledTask -TaskName $TaskN
   L ('task {0}: {1}, runs as {2} ({3}, {4}), at logon of {5}' -f $TaskN, $ti.State, $ti.Principal.UserId, $ti.Principal.LogonType, $ti.Principal.RunLevel, $Acct)
 
+  # ---- 7. Windows Search (see the header) ----
+  $restartForSearch = $false
+  $ws = Get-Service -Name WSearch -ErrorAction SilentlyContinue
+  if (-not $ws) {
+    try {
+      $wf = Install-WindowsFeature -Name Search-Service
+      L ('Search-Service feature install: success {0}, restart needed {1}' -f $wf.Success, $wf.RestartNeeded)
+      if ([string]$wf.RestartNeeded -ne 'No') { $restartForSearch = $true }
+    } catch { L ('WARNING: Install-WindowsFeature Search-Service failed: ' + $_.Exception.Message) }
+    $ws = Get-Service -Name WSearch -ErrorAction SilentlyContinue
+  }
+  if ($ws) {
+    if ([string]$ws.StartType -ne 'Automatic') {
+      try { Set-Service -Name WSearch -StartupType Automatic; L 'WSearch startup type set to Automatic' }
+      catch { L ('WARNING: could not set WSearch to Automatic: ' + $_.Exception.Message) }
+    }
+    if ([string]$ws.Status -ne 'Running') {
+      try { Start-Service -Name WSearch; L 'WSearch started' }
+      catch { L ('WSearch did not start now (' + $_.Exception.Message + '); it starts at the next boot'); $restartForSearch = $true }
+    }
+    $ws = Get-Service -Name WSearch
+    $searchLine = 'Windows Search (WSearch): {0}, {1}' -f $ws.Status, $ws.StartType
+  } elseif ($restartForSearch) {
+    $searchLine = 'Windows Search: feature installed, the WSearch service appears after the restart'
+  } else {
+    $searchLine = 'WARNING: no WSearch service - search and the mcp step WILL FAIL on E2E2C-WIN; dispatch its staging-api-e2e with steps=devices,browse,download,upload,exec'
+  }
+  L $searchLine
+
   # ---- summary (kept last: run-command returns only the last 4 KB of stdout) ----
   foreach ($fi in Get-ChildItem -LiteralPath $Files -File) {
     $hl = 'HASH {0} {1} {2}' -f $fi.Name, $fi.Length, (Get-FileHash -LiteralPath $fi.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     Write-Output $hl
     try { Add-Content -LiteralPath $PLOG -Value $hl } catch { }
   }
+  L $searchLine
+  if ($restartForSearch -and (Test-Path -LiteralPath (Join-Path $Prof 'host.dat'))) { L 'RESTART NEEDED: Windows Search needs a restart and the token is already in place (v2 restarts the VM)' }
   L 'PROVISION DONE (no reboot: v4-vm-token.ps1 writes the token, then restarts the VM so autologon starts the app)'
 } catch {
   $msg = 'PROVISION FAILED line {0}: {1}' -f $_.InvocationInfo.ScriptLineNumber, $_.Exception.Message

@@ -1,5 +1,7 @@
 # E4 - blank every file in C:\Temp\e2e that held a secret (passwords, key, tokens, VM admin password, filled templates,
-# settings files) and list what is left with sizes. Removing the folder afterwards is a separate inline command that
+# settings files) and list what is left with sizes. Refuses, blanking nothing, while old-testaccount.json still holds a
+# value: that is the only copy of staging's original TestAccount__* settings, and a value there means A4 has not put
+# them back (run a4-restore-settings.ps1 first, with -Abort when the test was abandoned before B0 finished). Removing the folder afterwards is a separate inline command that
 # the destructive-command gate guards (Majid's go):
 #   Remove-Item -LiteralPath C:\Temp\e2e -Recurse -Force; 'ok'
 # Run inline or detached:
@@ -159,8 +161,19 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 try {
+  $bk = Join-Path $D 'old-testaccount.json'
+  if ((Test-Path -LiteralPath $bk) -and [IO.File]::ReadAllText($bk).Trim()) { throw 'old-testaccount.json still holds staging''s original TestAccount__* settings (A4 has not restored them) - nothing blanked; run a4-restore-settings.ps1 (-Abort if B0 never finished), then e4 again. Do NOT remove this folder.' }
   foreach ($fn in 'pw.txt', 'bootstrap.txt', 'apikey.txt', 'win-token.txt', 'lnx-token.txt', 'vm-admin.txt', 'old-testaccount.json', 'seed-settings.json', 'restore.json', 'aci-linux.yaml', 'vm-token.ps1') {
     $p = Join-Path $D $fn
     if (Test-Path -LiteralPath $p) { [IO.File]::WriteAllText($p, ''); L ('blanked ' + $fn) }

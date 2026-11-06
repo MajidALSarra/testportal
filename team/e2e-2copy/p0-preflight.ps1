@@ -158,6 +158,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 $ErrorActionPreference = 'Continue'
 function Probe([string]$label, [scriptblock]$body) {
@@ -177,6 +186,11 @@ Probe 'staging TestAccount' {
   L ('staging TestAccount__* settings (name, sticky): {0}' -f $(if ($n.Count) { $n -join ' | ' } else { 'none' }))
   $e = (@(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?name=='TestAccount__Email'].value | [0]" -o tsv) -join '').Trim()
   L ('staging TestAccount__Email (an address, not a secret): ' + $(if ($e) { $e } else { '(unset)' }))
+}
+Probe 'sticky names' {
+  $sn = @(StickyNames)
+  L ('site-wide sticky app-setting names, shared with production ({0}; E5 must show the same list): {1}' -f $sn.Count, $(if ($sn.Count) { $sn -join ',' } else { 'none' }))
+  L ('  TestAccount__Email in it: {0}; TestAccount__Password in it: {1}' -f ($sn -contains 'TestAccount__Email'), ($sn -contains 'TestAccount__Password'))
 }
 Probe 'resource group' {
   L ('rg {0} exists: {1}' -f $RG, (@(AZ group exists -n $RG) -join ''))

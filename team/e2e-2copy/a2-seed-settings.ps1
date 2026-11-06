@@ -8,6 +8,11 @@
 #   sticky-name list untouched (azure-cli 2.86 update_app_settings: slot configuration names are written only when
 #   --slot-settings or a list entry with slotSetting is given). So nothing is written to production's configuration,
 #   and stickiness stays exactly as it was. The file is blanked in a finally block.
+# * Refuses BEFORE changing anything when staging lacks one of our two names but that name is in the site-wide sticky
+#   list: A4 would then have to delete it from staging, and 'appsettings delete' also removes it from that list, which
+#   production shares. Logs the sticky list (names only) so A4 and E5 can be compared with it.
+# * If this or any later step fails and the test is abandoned, the way back is the RUNBOOK abort sequence, starting
+#   with a4-restore-settings.ps1 -Abort in THIS folder (old-testaccount.json here is the only copy of the old values).
 # Logs names, stickiness and the address only.
 # Run detached (tell Falcon first: staging restarts):
 #   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\a2-seed-settings.ps1'
@@ -166,12 +171,22 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 try {
   CheckLock
   $email = ReadEmail
   $boot = ReadSecret 'bootstrap.txt' '^[A-Za-z0-9]{32}$'
   $bk = Join-Path $D 'old-testaccount.json'
+  $fresh = $false
   if ((Test-Path -LiteralPath $bk) -and [IO.File]::ReadAllText($bk).Trim()) {
     $old = [IO.File]::ReadAllText($bk)
     L 'old-testaccount.json already holds the first run''s backup - kept, not overwritten'
@@ -179,8 +194,7 @@ try {
     $old = (@(AZ webapp config appsettings list -g folderbird-rg -n folderbird-app --slot staging --query "[?starts_with(name,'TestAccount__')]" -o json)) -join "`n"
     if ($script:AZRC -ne 0) { throw ('appsettings list failed ({0}) - see {1}' -f $script:AZRC, $ERRF) }
     if (-not $old.Trim().StartsWith('[')) { throw 'appsettings list did not return a JSON list' }
-    [IO.File]::WriteAllText($bk, $old)
-    L 'old-testaccount.json written (the current staging TestAccount__* settings)'
+    $fresh = $true
   }
   $parsed = $old | ConvertFrom-Json
   $list = @($parsed | Where-Object { $_ -and $_.name })
@@ -190,6 +204,16 @@ try {
     L ('before: {0} slotSetting={1}{2}' -f $s.name, $s.slotSetting, $shown)
   }
   if ($list.Count -eq 0) { L 'before: no TestAccount__* settings on staging (A4 will delete ours)' }
+  $sticky = @(StickyNames)
+  L ('site-wide sticky app-setting names (shared with production, {0}): {1}' -f $sticky.Count, $(if ($sticky.Count) { $sticky -join ',' } else { 'none' }))
+  $have = @($list | ForEach-Object { [string]$_.name })
+  $missing = @(@('TestAccount__Email', 'TestAccount__Password') | Where-Object { $have -notcontains $_ })
+  $hit = @($missing | Where-Object { $sticky -contains $_ })
+  if ($hit.Count -gt 0) { throw ('staging has no {0}, but that name is in the site-wide sticky list shared with production: A4 could not remove it from staging without changing production''s sticky list. Nothing was changed. Ask Falcon/Majid before going on.' -f ($hit -join ' / ')) }
+  if ($fresh) {
+    [IO.File]::WriteAllText($bk, $old)
+    L 'old-testaccount.json written (the current staging TestAccount__* settings; A4 restores them, A4 -Abort if the test is abandoned)'
+  }
   $oldEmail = [string](@($list | Where-Object { $_.name -eq 'TestAccount__Email' } | ForEach-Object { $_.value }) | Select-Object -First 1)
   if ($oldEmail -and $oldEmail -ne 'e2e-staging@folderbird.com' -and $oldEmail -ne $email) { L ('WARNING: staging seeded {0} before (expected e2e-staging@folderbird.com); A4 restores it unchanged' -f $oldEmail) }
 

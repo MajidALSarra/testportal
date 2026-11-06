@@ -60,6 +60,8 @@ foreach ($ap in $apps) {
   $ow = Invoke-CimMethod -InputObject $ap -MethodName GetOwner
   O ('FolderbirdClient pid {0}: session {1}, owner {2}\{3}, started {4:u}, path {5}, args {6}' -f $ap.ProcessId, $ap.SessionId, $ow.Domain, $ow.User, $ap.CreationDate.ToUniversalTime(), $ap.ExecutablePath, ([string]$ap.CommandLine -replace '^.*FolderbirdClient\.exe"?\s*', ''))
 }
+$ws = Get-Service -Name WSearch -ErrorAction SilentlyContinue
+O ('Windows Search (WSearch): {0}' -f $(if ($ws) { '{0}, {1}' -f $ws.Status, $ws.StartType } else { 'NOT INSTALLED - search and the mcp step fail on this device (run v2 again)' }))
 $ht = Join-Path $Prof 'host.txt'; $hd = Join-Path $Prof 'host.dat'
 $hdi = Get-Item -LiteralPath $hd -ErrorAction SilentlyContinue
 O ('token files: host.txt present={0}; host.dat present={1}{2}' -f (Test-Path -LiteralPath $ht), [bool]$hdi, $(if ($hdi) { ' ({0} bytes, written {1:u})' -f $hdi.Length, $hdi.LastWriteTimeUtc } else { '' }))

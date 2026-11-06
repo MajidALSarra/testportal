@@ -161,6 +161,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 # ---- web block: cookie sign-in to the STAGING site (generated; the same in b0, b2, e2) ----
 Add-Type -AssemblyName System.Net.Http
@@ -227,7 +236,7 @@ try {
   if (Test-Path -LiteralPath $bf) { $boot = [IO.File]::ReadAllText($bf).Trim() }
   if ($boot) {
     if ($boot -notmatch '^[A-Za-z0-9]{32}$') { throw 'bootstrap.txt does not have the expected shape' }
-    if ($boot -eq $pw) { throw 'bootstrap.txt equals pw.txt - start again in a fresh folder' }
+    if ($boot -eq $pw) { throw 'bootstrap.txt equals pw.txt - stop: a4-restore-settings.ps1 -Abort in THIS folder, then the RUNBOOK abort sequence' }
     $script:SECRETS += $boot
     $c1 = NewClient $true
     $s = SignIn $c1 $email $boot
@@ -248,7 +257,7 @@ try {
   $c2 = NewClient $true
   $s2 = SignIn $c2 $email $pw
   L ('sign-in with pw.txt in a fresh session: ' + $s2)
-  if ($s2 -ne 'ok') { throw 'pw.txt does not sign in - do NOT set E2E_PASSWORD; read q-seed.log (was the account created by this run?)' }
+  if ($s2 -ne 'ok') { throw 'pw.txt does not sign in - do NOT set E2E_PASSWORD; read q-seed.log (was the account created by this run?). To give up: a4-restore-settings.ps1 -Abort, then the RUNBOOK abort sequence' }
   [void](Get200 $c2 '/Manage/ApiKeys')
   [IO.File]::WriteAllText($bf, '')
   L 'bootstrap.txt blanked; the value in the staging app settings no longer signs in'

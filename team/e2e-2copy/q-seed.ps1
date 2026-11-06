@@ -6,7 +6,8 @@
 #   "[TestAccountSeeder] account <email> already exists and is confirmed ..."   existed already (an earlier run of A2, or
 #                                                                               someone else's account: b0 decides)
 #   "[TestAccountSeeder] existing account <email> marked email-confirmed."      someone REGISTERED that address: stop,
-#                                                                               rerun a1 -Email e2e-2copy-b@folderbird.com
+#                                                                               a4 -Abort (same folder), then start again
+#                                                                               with a1 -Email e2e-2copy-b@folderbird.com
 #   "[TestAccountSeeder] FAILED to create <email>: <Identity text>"            "is already taken" next to a created line
 #                                                                               = the second instance lost the race (fine);
 #                                                                               anything else = a password rule failed
@@ -169,6 +170,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 $WS = 'e6ed9be0-2c69-41a8-9581-55a5a6690ffb'
 try {
@@ -201,11 +211,11 @@ try {
     if ((Get-Date).AddSeconds(120) -lt $deadline) { L 'nothing for the e2e address yet (log ingestion takes about 5 min); next try in 120 s'; Start-Sleep -Seconds 120 } else { break }
   } while ((Get-Date) -lt $deadline)
   foreach ($row in $mine) { L ('seeder| ' + $row) }
-  if ($mine.Count -eq 0) { throw ('no seeder line for {0} within {1} min - read q-seed.err; b0-set-password.ps1 is the final proof' -f $email, $QueryMinutes) }
+  if ($mine.Count -eq 0) { throw ('no seeder line for {0} within {1} min - read q-seed.err; b0-set-password.ps1 is the final proof (to give up instead: a4-restore-settings.ps1 -Abort, then the RUNBOOK abort sequence)' -f $email, $QueryMinutes) }
   $created = @($mine | Where-Object { $_ -match 'created pre-verified account' }).Count -gt 0
-  if (@($mine | Where-Object { $_ -match 'marked email-confirmed' }).Count -gt 0) { throw 'someone had REGISTERED this address (seeder only confirmed it): stop; run a1 -Email e2e-2copy-b@folderbird.com in a fresh folder' }
+  if (@($mine | Where-Object { $_ -match 'marked email-confirmed' }).Count -gt 0) { throw 'someone had REGISTERED this address (seeder only confirmed it): stop. Run a4-restore-settings.ps1 -Abort in THIS folder first (old-testaccount.json is the only copy of staging''s old values), then the RUNBOOK abort sequence, then a1 -Email e2e-2copy-b@folderbird.com' }
   if ($created) { L 'VERDICT: account created by the seeder' }
   elseif (@($mine | Where-Object { $_ -match 'already exists and is confirmed' }).Count -gt 0) { L 'VERDICT: the address already existed - fine if an earlier A2 created it; b0 proves it (bootstrap sign-in)' }
-  else { throw 'no created line for the address - a password rule failed or the seeder errored; read the seeder| lines' }
+  else { throw 'no created line for the address - a password rule failed or the seeder errored; read the seeder| lines, then a4-restore-settings.ps1 -Abort and the RUNBOOK abort sequence' }
   L 'DONE - next: b0-set-password.ps1'
 } catch { Fail $_ }

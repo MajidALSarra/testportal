@@ -13,11 +13,15 @@ Reference source: folderbird-web main 91de08d, folderbird-agent main 1f14100.
 
 Nothing here has been run on Windows. Every .ps1 parses with the pwsh 7.4.6 parser and passes the repo's reserved-name
 scanner, and the files are ASCII only. b0, b2, e2, t-device-token, c1 and v4 were run under pwsh 7 against fake
-servers. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls are untested.
+servers; a2, a4 and e2 were run again under pwsh 7 against a fake az and fake sign-ins after the abort/sticky-list
+changes. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls are untested.
 
 ## How to run (all steps)
 
 - **Where:** the laptop (device 39), through Folderbird run_command/write_file. It is the only place secrets exist.
+- **Shell:** every inline command in this runbook is PowerShell. Call `mcp__Folderbird__run_command` with
+  `shell='powershell'` every time (E6 included); the default is cmd, where `Start-Process`, `Get-Content` and
+  `Remove-Item` do not exist, so nothing starts and no log is written.
 - **Setup:** first run `New-Item -ItemType Directory -Force C:\Temp\e2e | Out-Null; 'ok'`, then write_file every file
   of this folder to `C:\Temp\e2e\<same name>`. They are ASCII; the .ps1 files use CRLF.
 - **Start a script detached**, because run_command stops after 45 s:
@@ -38,7 +42,8 @@ servers. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls a
   - Nothing here contacts the production host except the VM's one GET of https://folderbird.com/download/windows.
 - **Approvals:**
   - Majid's go before C1 and V1 [SPEND], and before every E step (deletions).
-  - Tell Falcon before A2 and A4 (staging restarts; production untouched).
+  - Tell Falcon before A2 and A4 (staging restarts; production untouched). Neither writes the site-wide sticky-name
+    list that production shares (A2 refuses up front when A4 would have to; A4 checks the list before and after).
   - Send Kestrel the D2 inputs.
   - The destructive-command gate does not see inside a script started with Start-Process, so the go is still needed.
 
@@ -51,6 +56,7 @@ servers. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls a
      - staging and production instance names. Keep production's ids: E5 compares them. They come from ARM; the
        production host is never contacted.
      - staging TestAccount__* names, stickiness and the seeded address;
+     - the site-wide sticky app-setting names (shared with production; names only). E5 must show the same list.
      - whether folderbird-e2e-rg exists;
      - quota;
      - the gh path and auth exit code, repo secret names, and the last 3 runs of both e2e workflows;
@@ -69,10 +75,23 @@ servers. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls a
 | Step | Script | Touches | Check that proves it | Stop if |
 |---|---|---|---|---|
 | A1 | `a1-account.ps1` (`-Email e2e-2copy-b@folderbird.com` only if A3 says the address is taken) | laptop files only | `locked: inheritance off, only <SID> and S-1-5-18`; `pw.txt and bootstrap.txt written: 32 and 32 chars`; DONE | icacls or the ACL check fails; a password file already holds a value |
-| A2 | `a2-seed-settings.ps1` (tell Falcon first) | [PROD-SHARED] staging app settings get the address + the BOOTSTRAP value via `--settings @file` (values only; stickiness untouched); staging restarts, runs the schema batch, seeder writes one AspNetUsers row | `before:` lines (old names, stickiness, address); `after: TestAccount__Email = <ours>`; DONE | set fails; staging previously seeded something unexpected (WARNING line) |
-| A3 | `q-seed.ps1` (~1 min after A2; runs up to ~25 min) | read-only (staging health + Log Analytics) | `staging ready`; `seeder| ... created pre-verified account <ours>` (Where=staging); `VERDICT: account created` | `marked email-confirmed` (someone registered the address: fresh folder, A1 `-Email`); `FAILED to create` with no created line (password rule) |
-| B0 | `b0-set-password.ps1` | [PROD-SHARED] the account's password hash: bootstrap -> pw.txt via /Manage/ChangePassword | `password changed ... ChangePasswordSuccess`; `sign-in with pw.txt in a fresh session: ok`; `bootstrap.txt blanked`; DONE | the bootstrap value AND pw.txt both refused (account not ours / not created) |
-| A4 | `a4-restore-settings.ps1` right after B0 (tell Falcon) | [PROD-SHARED] staging restarts again; old TestAccount__* values put back with `--settings` (ours deleted if staging had none) | `now:` lines equal the `before:` lines (checked by the script); `TestAccount__Email = <old address>`; `old-testaccount.json blanked`; DONE; then staging /healthz/ready is ready | any mismatch (the script refuses DONE) |
+| A2 | `a2-seed-settings.ps1` (tell Falcon first) | [PROD-SHARED] staging app settings get the address + the BOOTSTRAP value via `--settings @file` (values only; stickiness untouched); staging restarts, runs the schema batch, seeder writes one AspNetUsers row | `before:` lines (old names, stickiness, address); the sticky-name line; `old-testaccount.json written`; `after: TestAccount__Email = <ours>`; DONE | set fails; staging previously seeded something unexpected (WARNING line); `... is in the site-wide sticky list` (nothing was changed: ask Falcon/Majid) |
+| A3 | `q-seed.ps1` (~1 min after A2; runs up to ~25 min) | read-only (staging health + Log Analytics) | `staging ready`; `seeder| ... created pre-verified account <ours>` (Where=staging); `VERDICT: account created` | `marked email-confirmed` (someone registered the address: **abort sequence**, skipping E2, then A1 `-Email e2e-2copy-b@folderbird.com`); `FAILED to create` with no created line (password rule: abort sequence) |
+| B0 | `b0-set-password.ps1` | [PROD-SHARED] the account's password hash: bootstrap -> pw.txt via /Manage/ChangePassword | `password changed ... ChangePasswordSuccess`; `sign-in with pw.txt in a fresh session: ok`; `bootstrap.txt blanked`; DONE | the bootstrap value AND pw.txt both refused (account not ours / not created): abort sequence |
+| A4 | `a4-restore-settings.ps1` right after B0 (tell Falcon) | [PROD-SHARED] staging restarts again; old TestAccount__* values put back with `--settings` (ours deleted if staging had none; BLANKED instead if the name is in the site-wide sticky list, because `appsettings delete` would also drop it from production's list) | `site-wide sticky list unchanged`; `now:` lines equal the `before:` lines (checked by the script); `TestAccount__Email = <old address>`; `old-testaccount.json blanked`; DONE; then staging /healthz/ready is ready | any mismatch (the script refuses DONE); `sticky list CHANGED` (tell Falcon at once) |
+
+**Abort sequence** (the way back when setup stops after A2: q-seed or B0 says stop, staging trouble, or Majid stops it).
+Run in the SAME folder, never a fresh one: old-testaccount.json is the only copy of staging's original TestAccount__*
+values (e2e-staging, used by connector-smoke and staging-e2e).
+1. `a4-restore-settings.ps1 -Abort` (tell Falcon; staging restarts). `-Abort` only skips the "B0 done" check. Check the
+   `now:` lines equal A2's `before:` lines and `old-testaccount.json blanked`; DONE.
+2. E1, if C1 or V1 ran.
+3. E2, except when q-seed reported `marked email-confirmed` (that account is someone else's). With bootstrap.txt still
+   holding a value, E2 also tries the bootstrap value, deletes the account with whichever signs in, and requires BOTH
+   to be refused afterwards.
+4. E3, if B1 or B3 ran.
+5. E4 (it refuses while old-testaccount.json still holds a value), then E5 and E6 as in section E.
+To start again afterwards: A1 in the same folder once E4 is DONE (or a new folder after E6).
 
 Notes:
 - **Two instances:** if staging runs two instances, the second may log `FAILED to create ... is already taken` or
@@ -111,12 +130,18 @@ What the container receives and does:
 
 | Step | Script | Touches | Check | Stop if |
 |---|---|---|---|---|
-| V1 | `v1-vm-create.ps1` (`-Size Standard_B2s` for the cheap one) | [SPEND] VM, disk, NIC, Standard public IP (outbound only), NSG with NO custom rule, VNet, all in folderbird-e2e-rg; vm-admin.txt on the laptop | `vm created`; `NSG ...: 0 custom rules ... attached to the NIC`; `auto-shutdown schedules ... 0`; quota and list price lines; DONE | quota/size refusal; NSG has a rule |
-| V2 | `v2-vm-provision.ps1` (+ `vm-provision.template.ps1`) | inside the VM only, as SYSTEM | `vm| zip ok`; both exes `Valid, signer Tair Foundation For CIT, timestamped`, v1.2.8.1; user fbe2e created (not admin); task FolderbirdE2ECopy; `PROVISION DONE`; two `windows E2E2C-WIN` lines in hashes.txt | any `PROVISION FAILED` |
+| V1 | `v1-vm-create.ps1` (`-Size Standard_B2s` for the cheap one) | [SPEND] VM, disk, NIC, Standard public IP (outbound only), NSG with NO custom rule, VNet, all in folderbird-e2e-rg; vm-admin.txt on the laptop (no '-' in it: az would read a leading '-' as an option) | `vm created`; `NSG ...: 0 custom rules ... attached to the NIC`; `auto-shutdown schedules ... 0`; quota and list price lines; DONE | quota/size refusal; NSG has a rule |
+| V2 | `v2-vm-provision.ps1` (+ `vm-provision.template.ps1`) | inside the VM only, as SYSTEM; also turns on Windows Search (installs the Search-Service feature if missing, WSearch Automatic + started) | `vm| zip ok`; both exes `Valid, signer Tair Foundation For CIT, timestamped`, v1.2.8.1; user fbe2e created (not admin); task FolderbirdE2ECopy; `Windows Search (WSearch): Running, Automatic` (or `... appears after the restart`); `PROVISION DONE`; `windows E2E2C-WIN` lines in hashes.txt | any `PROVISION FAILED`; `WARNING: no WSearch service` (go on, but see D2) |
 | V3 | `t-device-token.ps1 -Device win` | [PROD-SHARED] Devices row E2E2C-WIN (no platform = Windows), Redis presence | `signed in E2E2C-WIN (02E2E2C00002) ... token N chars` | as C1a |
 | V4 | `v4-vm-token.ps1` (+ `vm-token.template.ps1`) | inside the VM: host.txt (fbe2e + SYSTEM only), then VM restart | `vm-token.ps1 blanked`; `vm| INJECT DONE host.txt N chars, ACL ...`; `win-token.txt blanked`; DONE | `INJECT FAILED` (win-token.txt is kept: rerun V4) |
-| V5 | `v5-vm-check.ps1` (+ `vm-check.ps1`), about 3 min after V4 | read-only | `vm| sessions (quser ...): fbe2e ... Active`; `FolderbirdClient pid ... owner FB-E2E2C-WIN\fbe2e ... /startup`; `token files: host.txt present=False; host.dat present=True`; `VERDICT: app running, token migrated` | NOT READY after 4 attempts (read the wrapper / client-errors tails) |
+| V5 | `v5-vm-check.ps1` (+ `vm-check.ps1`), about 3 min after V4 | read-only | `vm| sessions (quser ...): fbe2e ... Active`; `FolderbirdClient pid ... owner FB-E2E2C-WIN\fbe2e ... /startup`; `Windows Search (WSearch): Running, Automatic`; `token files: host.txt present=False; host.dat present=True`; `VERDICT: app running, token migrated` | NOT READY after 4 attempts (read the wrapper / client-errors tails) |
 | V6 | `v6-vm-scrub.ps1` (+ `vm-scrub.ps1`) | inside the VM: blanks leftover copies of the injection script | `vm| SCRUB DONE blanked=N failed=0`; DONE | failed > 0 (the VM is deleted in E1 anyway) |
+
+Windows Search on a VM provisioned before this step existed: Windows Server ships with it off, and the server answers a
+Windows device's search only through the Search index (no fallback), so staging-api-e2e's `search` and `mcp` steps fail
+on E2E2C-WIN with HTTP 502 / isError. Run V2 again (idempotent; the app keeps running). If the VM prints
+`RESTART NEEDED`, V2 restarts the VM itself (autologon and the logon task bring the app back; host.dat survives). Then
+run V5 and look for the WSearch line.
 
 Why the VM and not the laptop:
 - **The risk:** anyone holding E2E_PASSWORD or E2E_API_KEY can run commands on the test device.
@@ -167,7 +192,7 @@ Runs per device, each once with the pin on A and once with the pin on B:
 | staging-e2e | rename | default | | |
 | staging-e2e | upload | default | | |
 | staging-e2e | console | default | | |
-| staging-api-e2e | | | the device's hash | steps blank (all), text_file=e2e-note.txt |
+| staging-api-e2e | | | the device's hash | steps blank (all), text_file=e2e-note.txt. For E2E2C-WIN only when V2/V5 show WSearch Running; otherwise steps=devices,browse,download,upload,exec and record that search and MCP were not covered on Windows |
 
 - **Totals:** 16 runs per device, 32 in all, plus the one instances run.
 - **Leftovers:** upload runs leave `e2e-upload-*.bin` and `e2e-api-*.bin` behind. They vanish with the devices in E1.
@@ -177,10 +202,10 @@ Runs per device, each once with the pin on A and once with the pin on B:
 | Step | Script | Touches | Check | Stop if |
 |---|---|---|---|---|
 | E1 | `e1-delete-rg.ps1` (first, so both agents stop polling: deleting a device row does NOT sign an agent out) | [SPEND stops] deletes folderbird-e2e-rg (VM, disk, NIC, IP, NSG, VNet, container); refuses unless tagged purpose=e2e-2copy | `in the group:` list; `... is gone`; DONE | still present after 25 min (check the portal) |
-| E2 | `e2-account-cleanup.ps1` (default deletes the account; `-KeepAccount` removes the devices, revokes the key and rotates the password to a value that is never stored) | [PROD-SHARED] deletes the account's Devices and ApiKeys rows and the user | `DeleteAccount -> 302 to "/"`, then `verified: a fresh sign-in with pw.txt is refused` and `verified: the old key gets 401` | it refuses while staging still seeds our address (A4 not done) or while the rg exists; any verification fails |
+| E2 | `e2-account-cleanup.ps1` (default deletes the account; `-KeepAccount` removes the devices, revokes the key and rotates the password to a value that is never stored) | [PROD-SHARED] deletes the account's Devices and ApiKeys rows and the user | `DeleteAccount -> 302 to "/"`, then `verified: a fresh sign-in with pw.txt is refused` (and `... with the bootstrap value is refused too` when bootstrap.txt still held one) and `verified: the old key gets 401` | it refuses while staging still seeds our address (A4 not done) or while the rg exists; any verification fails |
 | E3 | `e3-delete-secrets.ps1` | deletes repo secrets E2E_API_KEY and E2E_PASSWORD | `neither E2E_API_KEY nor E2E_PASSWORD is listed`; DONE | still listed |
-| E4 | `e4-scrub-laptop.ps1` | blanks every secret file in C:\Temp\e2e | `blanked ...` lines and the `left:` list; DONE | |
-| E5 | `p0-preflight.ps1` again | read-only | production instance ids equal step 0 (ARM); staging ready; rg does not exist; neither E2E_* secret listed | production instance id changed (report it: amber, not caused here) |
+| E4 | `e4-scrub-laptop.ps1` | blanks every secret file in C:\Temp\e2e | `blanked ...` lines and the `left:` list; DONE | it refuses, blanking nothing, while old-testaccount.json holds a value (A4 not done: run A4, with -Abort if B0 never finished) |
+| E5 | `p0-preflight.ps1` again | read-only | production instance ids equal step 0 (ARM); the site-wide sticky-name list equals step 0; staging ready; rg does not exist; neither E2E_* secret listed | production instance id changed (report it: amber, not caused here); sticky list changed (tell Falcon) |
 | E6 | inline, gate-guarded: `Remove-Item -LiteralPath C:\Temp\e2e -Recurse -Force; 'ok'` (pass confirm_destructive only after Majid agrees) | laptop folder | `Test-Path C:\Temp\e2e` is False | |
 
 Then post `done` in #folderbird-agents.

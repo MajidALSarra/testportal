@@ -6,6 +6,8 @@
 #    The Standard public IP is there for OUTBOUND only (a new VNet may have no default outbound access).
 #  * The VM admin password is generated here into vm-admin.txt and handed to az as "@<path>": az reads the file
 #    itself, so the password is never on a command line. Nobody needs it (there is no RDP); Azure requires one.
+#    It never contains '-': az puts the file's text in place of "@<path>" BEFORE argparse runs, so a value starting
+#    with '-' would be read as an option ("--admin-password: expected one argument") on every rerun.
 #  * No auto-shutdown schedule (the app must keep running).
 # Logs names, ids, lengths and prices only.
 # Run detached (Majid's go for the cost first):
@@ -168,6 +170,15 @@ function EnsureRg {
     L "resource group $RG created (westeurope, purpose=e2e-2copy)"
   }
 }
+# The SITE-WIDE sticky (slot-setting) app-setting names of folderbird-app. Production and staging share this ONE list,
+# so nothing in this procedure may write it: 'az webapp config appsettings delete' removes every deleted name from it
+# (azure-cli 2.86 delete_app_settings), even with --slot staging. Read-only GET; returns the names, throws on failure.
+function StickyNames {
+  $u = 'https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/folderbird-rg/providers/Microsoft.Web/sites/folderbird-app/config/slotConfigNames?api-version=2022-03-01'
+  $n = @(AZ rest --method get --url $u --query properties.appSettingNames -o tsv)
+  if ($script:AZRC -ne 0) { throw ('could not read the site-wide sticky-name list ({0}) - see {1}' -f $script:AZRC, $ERRF) }
+  return @($n | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Sort-Object)
+}
 # ---- end of common block ----
 $LOC = 'westeurope'; $VM = 'fb-e2e2c-win'
 $IMAGE = 'MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest'
@@ -182,17 +193,17 @@ try {
   L ('az account: ' + ($acct -join ' / '))
 
   if (-not (Test-Path -LiteralPath $PWF) -or -not [IO.File]::ReadAllText($PWF).Trim()) {
-    $cs = [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!#%-_.'
+    $cs = [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!#%_.'
     $rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $b = New-Object byte[] 28
     do { $rng.GetBytes($b); $pw = -join ($b | ForEach-Object { $cs[$_ % $cs.Length] }) }
-    until ($pw -cmatch '[A-Z]' -and $pw -cmatch '[a-z]' -and $pw -match '[0-9]' -and $pw -match '[!#%._-]')
+    until ($pw -cmatch '[A-Z]' -and $pw -cmatch '[a-z]' -and $pw -match '[0-9]' -and $pw -match '[!#%._]' -and $pw -match '^[A-Za-z0-9]')
     [IO.File]::WriteAllText($PWF, $pw)
     $pw = $null
     L 'vm-admin.txt written'
   }
   # If az cannot READ the file it silently uses the literal text "@C:\..." as the password, so check it right before.
   $chk = [IO.File]::ReadAllText($PWF)
-  if ($chk.Length -lt 16 -or $chk -match '[\r\n\s"]') { $chk = $null; throw 'vm-admin.txt is unreadable, too short or has whitespace/quotes - blank it and rerun' }
+  if ($chk.Length -lt 16 -or $chk -match '[\r\n\s"]' -or $chk.StartsWith('-')) { $chk = $null; throw 'vm-admin.txt is unreadable, too short, has whitespace/quotes or starts with "-" (az would read it as an option) - blank it and rerun' }
   $script:SECRETS += $chk
   L ('vm-admin.txt: {0} chars' -f $chk.Length)
   $chk = $null
