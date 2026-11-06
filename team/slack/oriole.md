@@ -13,11 +13,13 @@ started 2026-10-30). Majid asked for her Slack name on 2026-11-06.
   ```
   python3 -I team/tools/slack_mirror.py --outbox 1793946039.884569 \
     --dir <scratchpad>/inbox/oriole --hours 24 \
-    --name "Oriole · Oracle Cloud" --icon :sunrise:
+    --name "Oriole · Oracle Cloud" --icon :sunrise: --every 30
   ```
 
   Restart it with the other watchers after a container restart; its state file
-  stops it from re-posting old replies.
+  stops it from re-posting old replies. It polls every 30 s, not every 3 s:
+  `conversations.replies` shares one Tier 3 budget with the receipt watcher,
+  and Oriole posts rarely.
 
 ## Paste this into her session (Majid)
 

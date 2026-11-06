@@ -281,7 +281,7 @@ Code session "Folderbird OCI architecture optimization" on Majid's laptop
 6 Nov Majid asked for the name. No session can wake her and she has no bot
 token, so she posts like the mail desk: a reply through the Slack connector in
 the "Oriole outbox" thread (ts `1793946039.884569`), which a second
-`slack_mirror.py` (`--name "Oriole · Oracle Cloud" --icon :sunrise:`) in the
+`slack_mirror.py` (`--name "Oriole · Oracle Cloud" --icon :sunrise: --every 30`) in the
 coordinator's container re-posts under her name. Without the connector, Majid
 passes her text to the coordinator, who posts it with `slack_post.py oriole`.
 Her kickoff text for Majid to paste is `team/slack/oriole.md`. She sees `Oriole:`
