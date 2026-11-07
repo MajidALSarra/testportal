@@ -197,6 +197,30 @@ Runs per device, each once with the pin on A and once with the pin on B:
 - **Totals:** 16 runs per device, 32 in all, plus the one instances run.
 - **Leftovers:** upload runs leave `e2e-upload-*.bin` and `e2e-api-*.bin` behind. They vanish with the devices in E1.
 
+## P. Pointing the test PCs at PRODUCTION (Majid, 7 Nov 09:03 Riyadh: "now let's start testing the prod using the testing setup")
+
+Production runs one copy. The test account and both test PCs stay throwaway; only the server they poll changes. No new
+device token is needed for the Windows copy (one database, one token key); the Linux box is re-created, so it gets a new
+one. Everything still runs from the laptop, detached, with the usual DONE / FAILED log lines.
+
+| Step | Script | What it does | Done when |
+|---|---|---|---|
+| P1 | `t-device-token.ps1 -Device lnx` | a fresh device token for E2E2C-LNX (signs in on staging; the token is valid on both slots) | `lnx-token.txt` saved; DONE |
+| P2 | `c1-linux-aci.ps1 -Target production -Recreate` | deletes and re-creates `fb-e2e2c-linux` (tag-checked) with base-url `https://folderbird-app.azurewebsites.net/api`, the Linux app's own default | DONE; `aci-logs.ps1` shows `[e2e] base-url: https://folderbird-app.azurewebsites.net/api` |
+| P3 | `v7-vm-target.ps1 -Target production` | rewrites `C:\FolderbirdE2E\profile-win\base-url.txt` to `https://folderbird-app.azurewebsites.net`, stops ONLY the test copy's `FolderbirdClient.exe`, waits for the logon wrapper to start it again | `vm| TARGET DONE base-url=https://folderbird-app.azurewebsites.net newpid=<n>`; DONE |
+| P4 | `devices.ps1` | both test devices online (it asks staging, which reads the same database and Redis as production, so the status is the same) | E2E2C-WIN and E2E2C-LNX `online` |
+| P5 | GitHub Actions | dispatch `staging-e2e.yml` and `staging-api-e2e.yml` with `target=production`, one run at a time (shared concurrency group); leave the instance-pin inputs blank (one copy) | each run green |
+
+Inputs on production: device `E2E2C-WIN` with folder `C:\FolderbirdStaging\testfiles`; device `E2E2C-LNX` with folder
+`testfiles` in the browser workflow and `/root/testfiles` in the API workflow. Files and SHA-256 are the same as in
+section D. On `target=production` the browser workflow skips its Azure login and server-log step (Falcon's G8 rule:
+production console lines carry real customers' file names).
+
+Switching back: `v7-vm-target.ps1 -Target staging`, then `t-device-token.ps1 -Device lnx` and
+`c1-linux-aci.ps1 -Target staging -Recreate`. Note: `v4-vm-token.ps1` refuses while the Windows copy's base-url.txt is
+not the staging host, so switch it back first if it ever needs a new token. `vm-check.ps1` still probes staging's
+health from the VM and its VERDICT text says "online on staging"; read that as "online" while it polls production.
+
 ## E. Cleanup (Majid's go for each step)
 
 | Step | Script | Touches | Check | Stop if |

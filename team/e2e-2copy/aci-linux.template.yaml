@@ -1,8 +1,10 @@
 # ACI definition for the temporary Linux 0.2.2 test device E2E2C-LNX. c1-linux-aci.ps1 fills a copy with the address
 # and the DEVICE token (not the account password) from t-device-token.ps1 -Device lnx just before "az container create"
-# and blanks it right after; each placeholder appears exactly once, below. No public IP, no ports. The device name on the site (E2E2C-LNX) was set by that sign-in, so the
+# and blanks it right after; each placeholder (email, token, base url) appears exactly once, below. No public IP, no ports. The device name on the site (E2E2C-LNX) was set by that sign-in, so the
 # container's random hostname does not matter. The config files are what LinuxAgent/AgentConfig.cs reads:
-# base-url (staging; the built-in default is PRODUCTION), device-id (must equal the address used at sign-in), token.
+# base-url (its placeholder: c1 -Target staging -> the staging slot, -Target production -> the production host the real
+# Linux PCs use, the app's built-in default), device-id (must equal the address used at sign-in), token. The tarball
+# itself always comes from the staging slot's beta link ($B); its sha256 is checked either way.
 # After writing the token, PID 1 is replaced by a process WITHOUT FB_TOKEN in its environment (/proc/1/environ).
 apiVersion: '2021-10-01'
 location: westeurope
@@ -35,7 +37,8 @@ properties:
         echo "e7cec038e98af356b6ff55244a4caad1706565c0ef52be649e961a8e6647da90  /tmp/fb.tgz" | sha256sum -c -
         mkdir -p /opt/fb /root/.config/folderbird /root/testfiles
         tar -xzf /tmp/fb.tgz -C /opt/fb
-        printf '%s' "$B/api" > /root/.config/folderbird/base-url
+        printf '%s' '__BASEURL__' > /root/.config/folderbird/base-url
+        echo "[e2e] base-url: $(cat /root/.config/folderbird/base-url)"
         printf '%s' "$FB_DEVICE_ID" > /root/.config/folderbird/device-id
         printf '%s' "$FB_EMAIL" > /root/.config/folderbird/email
         ( umask 077; printf '%s' "$FB_TOKEN" > /root/.config/folderbird/token )

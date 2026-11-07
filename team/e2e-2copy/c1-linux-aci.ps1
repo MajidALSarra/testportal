@@ -1,12 +1,16 @@
-# C1 - [SPEND ~$0.06/h] [PROD-SHARED: the device polls staging] the temporary Linux 0.2.2 test device E2E2C-LNX:
+# C1 - [SPEND ~$0.06/h] [PROD-SHARED: the device polls staging, or PRODUCTION with -Target production] the temporary
+# Linux 0.2.2 test device E2E2C-LNX:
 # resource group folderbird-e2e-rg (tagged purpose=e2e-2copy) + container group fb-e2e2c-linux.
 # Needs lnx-token.txt from t-device-token.ps1 -Device lnx. The DEVICE TOKEN reaches ACI only as a secureValue inside a
 # filled copy of aci-linux.template.yaml, which is blanked in a finally block; lnx-token.txt is blanked once the
 # container exists. The account password never leaves the laptop.
 # -Recreate deletes an existing fb-e2e2c-linux first (run t-device-token.ps1 -Device lnx again before it).
+# -Target staging (default) | production: the server the agent polls (its base-url file). production is the host the
+# real Linux PCs use (LinuxAgent/AgentConfig.cs default); a device token is valid on both (one database, one token key).
+# Switching an existing box: t-device-token.ps1 -Device lnx, then c1-linux-aci.ps1 -Target <t> -Recreate.
 # Run detached:
 #   Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\Temp\e2e\c1-linux-aci.ps1'
-param([switch]$Recreate)
+param([switch]$Recreate, [string]$Target = 'staging')
 $NAME = 'c1-linux-aci'
 # ---- common block: the SAME text in every laptop script (generated; change all copies together) ----
 # Rules it enforces: az and gh run through RunExe (no shell, every argument quoted for the C runtime, stdin closed so a
@@ -180,7 +184,13 @@ try {
   $tok = ReadSecret 'lnx-token.txt' '^-[A-Za-z0-9+/]+={0,2}$'
   $tpl = [IO.File]::ReadAllText((Join-Path $D 'aci-linux.template.yaml'))
   if ($tpl -match '[^\x00-\x7F]') { throw 'aci-linux.template.yaml is not ASCII' }
-  if ([regex]::Matches($tpl, '__TOKEN__').Count -ne 1 -or [regex]::Matches($tpl, '__EMAIL__').Count -ne 1) { throw 'the template must hold __TOKEN__ and __EMAIL__ exactly once each' }
+  if ([regex]::Matches($tpl, '__TOKEN__').Count -ne 1 -or [regex]::Matches($tpl, '__EMAIL__').Count -ne 1 -or [regex]::Matches($tpl, '__BASEURL__').Count -ne 1) { throw 'the template must hold __TOKEN__, __EMAIL__ and __BASEURL__ exactly once each' }
+  $baseUrl = switch -Exact ($Target) {
+    'staging'    { $STAGING + '/api' }
+    'production' { 'https://folderbird-app.azurewebsites.net/api' }
+    default      { throw ('-Target must be staging or production, got ''{0}''' -f $Target) }
+  }
+  L ('target {0}: the agent will poll {1}' -f $Target, $baseUrl)
   EnsureRg
   $cur = @(AZ container show -g $RG -n $CG --query "[tags.purpose, instanceView.state]" -o tsv)
   if ($script:AZRC -eq 0) {
@@ -194,7 +204,7 @@ try {
   $rc = -1
   for ($i = 1; $i -le 3; $i++) {
     try {
-      [IO.File]::WriteAllText($y, $tpl.Replace('__EMAIL__', $email).Replace('__TOKEN__', $tok))
+      [IO.File]::WriteAllText($y, $tpl.Replace('__EMAIL__', $email).Replace('__TOKEN__', $tok).Replace('__BASEURL__', $baseUrl))
       L ('attempt {0}: az container create (image pull and start take 1-5 minutes)' -f $i)
       AZ container create -g $RG --file $y -o none | Out-Null
       $rc = $script:AZRC
