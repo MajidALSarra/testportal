@@ -39,7 +39,9 @@ changes. Windows PowerShell 5.1 itself and the real Azure/GitHub/staging calls a
 - **Tags in the steps below:**
   - [PROD-SHARED] = writes the database, Redis or Blob storage that production also uses.
   - [SPEND] = Azure cost.
-  - Nothing here contacts the production host except the VM's one GET of https://folderbird.com/download/windows.
+  - Nothing in sections 0 to E contacts the production host except the VM's one GET of
+    https://folderbird.com/download/windows. Section P deliberately moves both test PCs and both workflows to the
+    production host (Majid, 7 Nov 09:03 Riyadh).
 - **Approvals:**
   - Majid's go before C1 and V1 [SPEND], and before every E step (deletions).
   - Tell Falcon before A2 and A4 (staging restarts; production untouched). Neither writes the site-wide sticky-name
@@ -117,7 +119,7 @@ Key details:
 | Step | Script | Touches | Check | Stop if |
 |---|---|---|---|---|
 | C1a | `t-device-token.ps1 -Device lnx` | [PROD-SHARED] Devices row E2E2C-LNX (platform linux), Redis presence | `signed in E2E2C-LNX (02e2e2c00001) ... token N chars` | LoginFailed/LockedOut/DeviceLimitReached (printed), HTTP 429 (wait 60 s) |
-| C1b | `c1-linux-aci.ps1` (`-Recreate` to replace an existing container, after a new C1a) | [SPEND] rg folderbird-e2e-rg (created with the tag, or accepted only with it) + container group; [PROD-SHARED] the device polls staging | `attempt 1 ...`; `lnx-token.txt blanked`; `container: Running`; DONE | 3 failed creates (read c1-linux-aci.err) |
+| C1b | `c1-linux-aci.ps1` (`-Recreate` to replace an existing container, after a new C1a) | [SPEND] rg folderbird-e2e-rg (created with the tag, or accepted only with it) + container group; [PROD-SHARED] the device polls staging (or production with `-Target production`, section P) | `attempt 1 ...`; `lnx-token.txt blanked`; `container: Running`; DONE | 3 failed creates (read c1-linux-aci.err) |
 | C1c | `aci-logs.ps1` (2-3 min later; also inline) | read-only | `aci| /tmp/fb.tgz: OK`; `token file written: N bytes`; `connected`; `VERDICT: archive hash True; token file True; connected True`; two `linux E2E2C-LNX` lines in hashes.txt | hash mismatch: stop and report (the published blob changed). Do NOT switch to the production host; both slots serve the same blob. Also stop on `lost contact` / `session no longer valid`. |
 
 What the container receives and does:
@@ -203,17 +205,24 @@ Production runs one copy. The test account and both test PCs stay throwaway; onl
 device token is needed for the Windows copy (one database, one token key); the Linux box is re-created, so it gets a new
 one. Everything still runs from the laptop, detached, with the usual DONE / FAILED log lines.
 
+Approval: Majid's message of 7 Nov 09:03 Riyadh ("now let's start testing the prod using the testing setup") is the
+go for P2's delete and re-create of the test container and for pointing both test PCs at production. Tell Falcon
+before P2 (his production watch will see the two test PCs and their downloads).
+
 | Step | Script | What it does | Done when |
 |---|---|---|---|
+| P0 | `write_file` to `C:\Temp\e2e\` | copy the CURRENT `c1-linux-aci.ps1`, `aci-linux.template.yaml`, `v7-vm-target.ps1` and `vm-target.template.ps1` from this folder to the laptop (CRLF for the .ps1 files). Always copy c1 and the template together: an old c1 with the new template would create a box whose base-url is the literal placeholder | the four files on the laptop match this folder |
 | P1 | `t-device-token.ps1 -Device lnx` | a fresh device token for E2E2C-LNX (signs in on staging; the token is valid on both slots) | `lnx-token.txt` saved; DONE |
-| P2 | `c1-linux-aci.ps1 -Target production -Recreate` | deletes and re-creates `fb-e2e2c-linux` (tag-checked) with base-url `https://folderbird-app.azurewebsites.net/api`, the Linux app's own default | DONE; `aci-logs.ps1` shows `[e2e] base-url: https://folderbird-app.azurewebsites.net/api` |
-| P3 | `v7-vm-target.ps1 -Target production` | rewrites `C:\FolderbirdE2E\profile-win\base-url.txt` to `https://folderbird-app.azurewebsites.net`, stops ONLY the test copy's `FolderbirdClient.exe`, waits for the logon wrapper to start it again | `vm| TARGET DONE base-url=https://folderbird-app.azurewebsites.net newpid=<n>`; DONE |
+| P2 | `c1-linux-aci.ps1 -Target production -Recreate` [SPEND][PROD-SHARED: the device polls production] | deletes and re-creates `fb-e2e2c-linux` (tag-checked) with base-url `https://folderbird-app.azurewebsites.net/api`, the Linux app's own default | DONE; `aci-logs.ps1` shows `[e2e] base-url: https://folderbird-app.azurewebsites.net/api` |
+| P2b | `aci-logs.ps1` (2-3 min after P2) | read-only. The re-created box writes NEW random test files, so it appends NEW `linux E2E2C-LNX` lines to `hashes.txt`; use the NEWEST two (or this run's `aci| <sha>  /root/testfiles/...` lines). The older lines belong to the deleted box | `[e2e] base-url: https://folderbird-app.azurewebsites.net/api` (never `__BASEURL__`); `VERDICT: archive hash True; token file True; connected True` |
+| P2c | `d1-fixtures.ps1` | [PROD-SHARED] uploads `test-deck.pptx` and `test-small.pdf` again (the old box's copies are gone; the Windows copies are re-sent with the same bytes). Needs a valid `apikey.txt`: the B2 key lives 24 h, re-run B2/B3 if it expired | the fixture lines for E2E2C-LNX; DONE |
+| P3 | `v7-vm-target.ps1 -Target production` [PROD-SHARED: the test copy polls production] | rewrites `C:\FolderbirdE2E\profile-win\base-url.txt` to `https://folderbird-app.azurewebsites.net`, stops ONLY the test copy's `FolderbirdClient.exe`, waits for the logon wrapper to start it again | `vm| TARGET DONE base-url=https://folderbird-app.azurewebsites.net newpid=<n>`; DONE |
 | P4 | `devices.ps1` | both test devices online (it asks staging, which reads the same database and Redis as production, so the status is the same) | E2E2C-WIN and E2E2C-LNX `online` |
-| P5 | GitHub Actions | dispatch `staging-e2e.yml` and `staging-api-e2e.yml` with `target=production`, one run at a time (shared concurrency group); leave the instance-pin inputs blank (one copy) | each run green |
+| P5 | GitHub Actions | dispatch `staging-e2e.yml` and `staging-api-e2e.yml` with `target=production`, one run at a time (shared concurrency group); leave the instance-pin inputs blank (one copy). For each PC run `action=download` (or the API workflow) FIRST: console and edit can pass even from a PC that still polls staging (their replies ride the shared Redis), a download cannot | each run green; run names start with `production:` |
 
 Inputs on production: device `E2E2C-WIN` with folder `C:\FolderbirdStaging\testfiles`; device `E2E2C-LNX` with folder
 `testfiles` in the browser workflow and `/root/testfiles` in the API workflow. Files and SHA-256 are the same as in
-section D. On `target=production` the browser workflow skips its Azure login and server-log step (Falcon's G8 rule:
+section D for E2E2C-WIN; E2E2C-LNX has NEW random files after P2 (take their hashes from P2b). On `target=production` the browser workflow skips its Azure login and server-log step (Falcon's G8 rule:
 production console lines carry real customers' file names).
 
 Switching back: `v7-vm-target.ps1 -Target staging`, then `t-device-token.ps1 -Device lnx` and
