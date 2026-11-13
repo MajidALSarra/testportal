@@ -1,0 +1,20 @@
+# Falcon's own Slack identity, so Majid can type @Falcon.
+# Inert app: one bot user, no events, no server. Nobody copies its token;
+# Falcon keeps posting through Folderbird Agents. Mentions are routed by the
+# Coordinator's watcher, which reads the channel history.
+display_information:
+  name: Falcon
+  description: Falcon, Folderbird's ops agent. Mention @Falcon in #folderbird-agents.
+  background_color: "#0061FA"
+features:
+  bot_user:
+    display_name: Falcon
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
