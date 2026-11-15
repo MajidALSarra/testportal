@@ -11,9 +11,12 @@ The email names no tool. All 40 hints were already explicit booleans, so the pro
    link anyone can open for 15 minutes without signing in.
 2. `write_file`, `upload_file` and `create_folder` were openWorld false. OpenAI's Apps SDK guidance says to leave
    openWorldHint true "for tools that can write to arbitrary URLs/files/resources", and these accept any path the
-   computer can open (network shares, mapped drives, cloud-synced folders). ChatGPT asks the user before open-world
-   writes, which is what we want for overwrites that keep no backup.
-Fix: PR #111 (web-dev/mcp-annotations). Sources for the definitions: the MCP spec ToolAnnotations schema, and OpenAI's
+   computer can open (network shares, mapped drives, cloud-synced folders).
+3. (Wren, 15 Nov 13:02 UTC, from OpenAI's live plugin guidance) openWorld is about reaching external systems whether a
+   tool reads or writes; OpenAI's own example is public web search, read-only AND open-world. browse_folder,
+   search_files and read_file accept any path too, so they reach the same places: openWorld true. Only list_devices
+   and system_info take no path and stay closed. openWorld does not by itself make ChatGPT ask before a call.
+Fix: PR #111 (web-dev/mcp-annotations) plus the follow-up for the three reads (web-dev/mcp-annotations-reads). Sources for the definitions: the MCP spec ToolAnnotations schema, and OpenAI's
 Apps SDK text as quoted by third-party mirrors (developers.openai.com was not reachable from our sessions). Wren checks
 OpenAI's own page before pasting.
 
@@ -23,7 +26,7 @@ OpenAI's own page before pasting.
    draft page afterwards (the portal does not refresh on its own after a scan).
 2. Check that the scanned values for all 10 tools match the table below exactly. If any differ, stop and tell the
    coordinator.
-3. Paste the 40 justifications below, one per hint.
+3. If the form still asks for justifications (Wren: current guidelines may no longer require them), paste the ones below, one per hint.
 4. Majid presses Submit for review.
 
 ## Final table and the text to paste into the form
@@ -32,9 +35,9 @@ OpenAI's own page before pasting.
 |---|---|---|---|---|
 | list_devices | true | false | true | false |
 | system_info | true | false | true | false |
-| browse_folder | true | false | true | false |
-| search_files | true | false | true | false |
-| read_file | true | false | true | false |
+| browse_folder | true | false | true | **true** |
+| search_files | true | false | true | **true** |
+| read_file | true | false | true | **true** |
 | download_file | **false** | false | **false** | **true** |
 | create_folder | false | false | true | **true** |
 | write_file | false | true | true | **true** |
@@ -45,31 +48,31 @@ OpenAI's own page before pasting.
 - readOnlyHint true: It only returns the list of the user's own registered computers and whether each is online. Nothing is created, changed or deleted.
 - destructiveHint false: It changes nothing anywhere.
 - idempotentHint true: Calling it again with the same input has no further effect; it only reads.
-- openWorldHint false: It only reads the signed-in user's own Folderbird account and returns the list in the chat. It sends, publishes or writes nothing.
+- openWorldHint false: It takes no path or command: it only reads the signed-in user's own Folderbird device list and returns it in the chat. It reaches nothing else and sends, publishes or writes nothing.
 
 ### system_info
 - readOnlyHint true: It runs a fixed status report on the user's own computer (OS, CPU, memory, free disk, top processes) and returns it. No file or setting is changed.
 - destructiveHint false: It cannot delete or change anything.
 - idempotentHint true: Repeating it only reads the current status again; it has no further effect.
-- openWorldHint false: It only reads a status report from the user's own registered computer and returns it in the chat. It sends, publishes or writes nothing.
+- openWorldHint false: It takes no path or command: it runs one fixed status report on the user's own registered computer and returns it in the chat. It reaches nothing else and sends, publishes or writes nothing.
 
 ### browse_folder
 - readOnlyHint true: It lists the names, sizes and dates in one folder on the user's computer. Nothing is changed.
 - destructiveHint false: It cannot delete or change files.
 - idempotentHint true: Repeating it only lists the folder again.
-- openWorldHint false: It only reads a folder listing from the user's own registered computer and returns it in the chat. It sends, publishes or writes nothing.
+- openWorldHint true: It lists any folder the user's computer can open, including network shares, mapped drives and cloud-synced folders, so it can reach systems beyond the computer itself. It only reads; it sends, publishes or writes nothing.
 
 ### search_files
 - readOnlyHint true: It searches file names (or contents, if asked) on the user's computer and returns the matching paths. No file is opened for writing or changed.
 - destructiveHint false: It cannot delete or change files.
 - idempotentHint true: Repeating the same search has no further effect.
-- openWorldHint false: It only searches the user's own registered computer and returns the matching paths in the chat. It sends, publishes or writes nothing.
+- openWorldHint true: It can search any folder the user's computer can open, including network shares, mapped drives and cloud-synced folders. It only reads; it sends, publishes or writes nothing.
 
 ### read_file
 - readOnlyHint true: It returns the text of one file (up to 256 KB). The file is not changed.
 - destructiveHint false: It cannot delete or change the file.
 - idempotentHint true: Reading the same file again has no further effect.
-- openWorldHint false: It only reads from the user's own registered computer and returns the text in the chat. It sends, publishes or writes nothing.
+- openWorldHint true: It reads from any path the user's computer can open, including network shares, mapped drives and cloud-synced folders. It only reads and returns the text in the chat; it sends, publishes or writes nothing.
 
 ### download_file
 - readOnlyHint false: It creates something new: a temporary transfer copy of the file in Folderbird's transfer storage (normally deleted after 2 hours, always within a day) and a new download link.
