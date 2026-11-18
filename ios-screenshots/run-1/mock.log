@@ -1,0 +1,54 @@
+mock folderbird api on http://127.0.0.1:8787
+12:54:57 "GET /healthz HTTP/1.1" 200 -
+12:54:57 "GET /api/v1/devices HTTP/1.1" 200 -
+13:02:32 "GET /api/v1/devices HTTP/1.1" 401 -
+13:02:43 "GET /api/v1/devices HTTP/1.1" 200 -
+13:02:43 "GET /api/v1/devices HTTP/1.1" 200 -
+13:02:47 "POST /api/v1/devices/code HTTP/1.1" 200 -
+13:02:58 "GET /api/v1/devices/1/system HTTP/1.1" 200 -
+13:02:58 "GET /api/v1/devices/1/files?path=C%3A%5CUsers%5CAlex HTTP/1.1" 200 -
+13:03:02 "GET /api/v1/devices/1/files?path=C%3A%5CUsers%5CAlex%5CDocuments HTTP/1.1" 200 -
+13:03:05 "GET /api/v1/devices/1/files/download?path=C%3A%5CUsers%5CAlex%5CDocuments%5Cnotes.txt HTTP/1.1" 200 -
+13:03:10 "GET /api/v1/devices/1/files/download?path=C%3A%5CUsers%5CAlex%5CDocuments%5CAnnual-Report-2026.pdf HTTP/1.1" 200 -
+13:03:17 "POST /api/v1/devices/1/files/preview?path=C%3A%5CUsers%5CAlex%5CDocuments%5CQ3-Sales-Report.xlsx HTTP/1.1" 200 -
+13:03:19 "GET /preview/c158ece26f4f4be3bffa54d0c11fb495?theme=light HTTP/1.1" 200 -
+13:03:23 "GET /api/v1/devices/1/files?path=C%3A%5CUsers%5CAlex HTTP/1.1" 200 -
+13:03:26 "GET /api/v1/devices/1/files?path=C%3A%5CUsers%5CAlex%5CPictures HTTP/1.1" 200 -
+13:03:28 "GET /api/v1/devices/1/files/download?path=C%3A%5CUsers%5CAlex%5CPictures%5Csunset.png HTTP/1.1" 200 -
+13:03:42 "GET /api/v1/devices HTTP/1.1" 200 -
+13:14:58 "GET /api/v1/devices HTTP/1.1" 401 -
+13:15:48 "GET /api/v1/devices HTTP/1.1" 200 -
+13:15:50 "GET /api/v1/devices HTTP/1.1" 200 -
+13:16:03 "POST /api/v1/devices/code HTTP/1.1" 200 -
+13:16:57 "GET /api/v1/devices/1/system HTTP/1.1" 200 -
+13:16:57 "GET /api/v1/devices/1/files?path=C%3A%5CUsers%5CAlex HTTP/1.1" 200 -
+13:18:09 "GET /api/v1/devices HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 55161)
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 694, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 359, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 763, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/http/server.py", line 474, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/http/server.py", line 462, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "/Users/runner/work/testportal/testportal/folderbird-ios/tools/mockserver.py", line 259, in do_GET
+    return self.send_json(200, {"devices": DEVICES})
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/runner/work/testportal/testportal/folderbird-ios/tools/mockserver.py", line 213, in send_json
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/lib/python3.15/socketserver.py", line 842, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+BrokenPipeError: [Errno 32] Broken pipe
+----------------------------------------
