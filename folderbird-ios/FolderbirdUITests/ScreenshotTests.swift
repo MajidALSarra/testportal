@@ -78,8 +78,7 @@ final class ScreenshotTests: XCTestCase {
         if isMock { offlineDeviceToast() }
         guard openFirstOnlineDevice() else { shot("browse-missing"); return }
         browse()
-        previews()
-        search()
+        previews()          // text, PDF, Office in Documents; search there; then the image in Pictures
         console()
         if writes { newFolder() }
         if !pad { moreTab() }
@@ -212,8 +211,9 @@ final class ScreenshotTests: XCTestCase {
         preview("notes.txt", expectText: "Folderbird", as: "text")
         preview("Annual-Report-2026.pdf", expectText: "page", as: "pdf")
         preview("Q3-Sales-Report.xlsx", expectText: nil, as: "office")
-        // The image lives in Pictures: up one level, then into Pictures.
         closePreviewIfDocked()
+        search()            // "report" scoped to the current folder — Documents has four matches
+        // The image lives in Pictures: up one level, then into Pictures.
         if goUp() {
             if app.buttons["Pictures"].firstMatch.waitForExistence(timeout: slow) || app.staticTexts["Pictures"].firstMatch.waitForExistence(timeout: 5) {
                 _ = open(folder: "Pictures")
