@@ -75,8 +75,11 @@ final class Prefs: ObservableObject {
 
     /// Re-read what another process (the app vs. the share extension) may have changed.
     func reload() {
+        // Adopt a key another process stored; never sign out on an EMPTY read. The keychain can answer nothing
+        // transiently (a read before the first unlock, or an unsigned simulator build whose keychain refuses
+        // every write) and the session must survive that — sign-out is explicit (Settings) or a 401.
         let k = Keychain.get(K.key) ?? ""
-        if k != apiKey { apiKey = k }
+        if !k.isEmpty && k != apiKey { apiKey = k }
         let b = d.string(forKey: K.base) ?? Prefs.defaultBase
         if b != baseUrl { baseUrl = b }
         let t = d.string(forKey: K.theme) ?? "system"

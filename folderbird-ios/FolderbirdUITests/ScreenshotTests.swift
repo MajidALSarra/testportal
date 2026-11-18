@@ -200,9 +200,9 @@ final class ScreenshotTests: XCTestCase {
 
     /// Folder rows are buttons on the phone and table rows on the iPad; the name text is tappable in both.
     private func open(folder name: String) -> Bool {
-        let b = app.buttons[name]
+        let b = app.buttons[name].firstMatch
         if b.waitForExistence(timeout: 5) { b.tap(); return true }
-        let t = app.staticTexts[name]
+        let t = app.staticTexts[name].firstMatch
         if t.waitForExistence(timeout: 5) { t.tap(); return true }
         activity("no folder \(name) on this PC — skipped")
         return false
@@ -214,9 +214,8 @@ final class ScreenshotTests: XCTestCase {
         preview("Q3-Sales-Report.xlsx", expectText: nil, as: "office")
         // The image lives in Pictures: up one level, then into Pictures.
         closePreviewIfDocked()
-        if app.buttons["browse.up"].exists {
-            app.buttons["browse.up"].tap()
-            if app.buttons["Pictures"].waitForExistence(timeout: slow) || app.staticTexts["Pictures"].waitForExistence(timeout: 5) {
+        if goUp() {
+            if app.buttons["Pictures"].firstMatch.waitForExistence(timeout: slow) || app.staticTexts["Pictures"].firstMatch.waitForExistence(timeout: 5) {
                 _ = open(folder: "Pictures")
                 preview("sunset.png", expectText: nil, as: "image")
                 closePreviewIfDocked()
@@ -246,6 +245,16 @@ final class ScreenshotTests: XCTestCase {
         }
         shot("preview-\(tag)")
         if !pad { closePreviewIfDocked() }
+    }
+
+    /// Up one folder: the toolbar button on the iPad, the actions-menu item on the phone.
+    private func goUp() -> Bool {
+        if app.buttons["browse.up"].exists { app.buttons["browse.up"].tap(); return true }
+        app.buttons["browse.add"].tap()
+        let item = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Up one folder")).firstMatch
+        guard item.waitForExistence(timeout: 5) else { return false }
+        item.tap()
+        return true
     }
 
     private func closePreviewIfDocked() {

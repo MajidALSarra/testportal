@@ -210,7 +210,8 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try: self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError): pass
 
     def send_bytes(self, code, data, ctype, name=None):
         self.send_response(code)
@@ -218,7 +219,8 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         if name: self.send_header("Content-Disposition", f'attachment; filename="{name}"')
         self.end_headers()
-        self.wfile.write(data)
+        try: self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError): pass
 
     def body(self):
         n = int(self.headers.get("Content-Length") or 0)

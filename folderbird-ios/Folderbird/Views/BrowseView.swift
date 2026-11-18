@@ -108,6 +108,16 @@ struct BrowseView: View {
                 }
                 .hidden()
             }
+            // Compact width keeps Up and Refresh inside the actions menu; their shortcuts still work from here.
+            if layout == .compact {
+                Group {
+                    if model.path != nil {
+                        Button("Up one folder") { Task { await model.goUp() } }.keyboardShortcut(.upArrow, modifiers: .command)
+                    }
+                    Button("Refresh") { Task { await model.refresh() } }.keyboardShortcut("r", modifiers: .command)
+                }
+                .hidden()
+            }
         }
     }
 
@@ -124,7 +134,25 @@ struct BrowseView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            if model.path != nil {
+            if layout == .compact {
+                // A phone-width bar shows at most three trailing items and folds the rest into an overflow menu —
+                // which is where Search and Refresh went. Here: one actions menu (upload, new folder, up, refresh),
+                // the console and search; the breadcrumbs and pull-to-refresh cover up/refresh too. iPad keeps five.
+                Menu {
+                    if model.path != nil {
+                        Button { showImporter = true } label: { Label("Upload file here", systemImage: "square.and.arrow.up") }
+                        Button { showPhotos = true } label: { Label("Upload photos or videos", systemImage: "photo.on.rectangle") }
+                        Button { newFolderOpen = true } label: { Label("New folder", systemImage: "folder.badge.plus") }
+                        Divider()
+                        Button { Task { await model.goUp() } } label: { Label("Up one folder", systemImage: "arrow.up") }
+                    }
+                    Button { Task { await model.refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .help("Upload, new folder, up one folder, refresh")
+                .accessibilityIdentifier("browse.add")
+            } else if model.path != nil {
                 Menu {
                     Button { showImporter = true } label: { Label("Upload file here", systemImage: "square.and.arrow.up") }
                     Button { showPhotos = true } label: { Label("Upload photos or videos", systemImage: "photo.on.rectangle") }
@@ -149,10 +177,12 @@ struct BrowseView: View {
                 .keyboardShortcut("f", modifiers: .command)
                 .help("Search")
                 .accessibilityIdentifier("browse.search")
-            Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }
-                .keyboardShortcut("r", modifiers: .command)
-                .help("Refresh")
-                .accessibilityIdentifier("browse.refresh")
+            if layout == .regular {
+                Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .help("Refresh")
+                    .accessibilityIdentifier("browse.refresh")
+            }
         }
     }
 
