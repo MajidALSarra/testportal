@@ -1,0 +1,49 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "035373CB-D534-4C86-8830-CD32802C3E1A",
+        "deviceName" : "iPhone 16 Pro",
+        "modelName" : "iPhone 16 Pro",
+        "osBuildNumber" : "23C54",
+        "osVersion" : "26.2",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 2,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Folderbird · Built with macOS 15.8.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1795009112.227,
+  "passedTests" : 2,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1795008918.817,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "Failed to failed to scroll to visible (by AX action) Button, {{247.3, 61.3}, {42.0, 34.0}}, identifier: 'browse.add', label: 'More', error: Error kAXErrorCannotComplete performing AXAction kAXScrollToVisibleAction on element AX element pid: 6991, elementOrHash.elementID: 4864477104.235. (Underlying Error: Error kAXErrorCannotComplete performing AXAction kAXScrollToVisibleAction on element AX element pid: 6991, elementOrHash.elementID: 4864477104.235)",
+      "targetName" : "FolderbirdUITests",
+      "testIdentifier" : 2,
+      "testIdentifierString" : "ScreenshotTests/test02_SignedInJourney()",
+      "testIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests/test02_SignedInJourney",
+      "testName" : "test02_SignedInJourney()"
+    }
+  ],
+  "title" : "Test - Folderbird",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 3
+}
