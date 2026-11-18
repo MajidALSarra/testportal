@@ -254,11 +254,19 @@ final class ScreenshotTests: XCTestCase {
     /// Up one folder: the toolbar button on the iPad, the actions-menu item on the phone.
     private func goUp() -> Bool {
         if app.buttons["browse.up"].exists { app.buttons["browse.up"].tap(); return true }
-        app.buttons["browse.add"].tap()
+        openActionsMenu()
         let item = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Up one folder")).firstMatch
         guard item.waitForExistence(timeout: 5) else { return false }
         item.tap()
         return true
+    }
+
+    /// The toolbar Menu reports itself as not hittable to XCUITest (a plain tap fails with "failed to scroll to
+    /// visible"), so it is opened by a tap at its centre, which does not go through the hittability check.
+    private func openActionsMenu() {
+        let menu = app.buttons["browse.add"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 10), "actions menu button")
+        menu.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     private func closePreviewIfDocked() {
@@ -327,7 +335,7 @@ final class ScreenshotTests: XCTestCase {
 
     private func newFolder() {
         let name = "From the \(pad ? "iPad" : "iPhone")"
-        app.buttons["browse.add"].tap()
+        openActionsMenu()
         let item = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "New folder")).firstMatch
         guard item.waitForExistence(timeout: 5) else { XCTFail("New folder menu item"); return }
         item.tap()
