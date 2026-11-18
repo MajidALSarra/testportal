@@ -235,8 +235,12 @@ final class ScreenshotTests: XCTestCase {
         if let e = expectText {
             XCTAssertTrue(waitText(containing: e, slow), "preview of \(name) shows '\(e)'")
         } else if tag == "office" {
+            // The web view exists before its page has rendered (the WebKit process starts cold on a fresh
+            // simulator); wait for text inside it, then a beat for layout.
             XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: slow), "web preview of \(name)")
-            Thread.sleep(forTimeInterval: isMock ? 2 : 6)      // page load
+            let rendered = app.webViews.staticTexts.firstMatch.waitForExistence(timeout: slow)
+            XCTAssertTrue(rendered, "the server preview page rendered text for \(name)")
+            Thread.sleep(forTimeInterval: isMock ? 2 : 6)
         } else {
             _ = app.staticTexts["Loading preview…"].waitForExistence(timeout: 2)
             let deadline = Date().addingTimeInterval(slow)
