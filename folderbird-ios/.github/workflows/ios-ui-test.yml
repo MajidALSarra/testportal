@@ -14,10 +14,7 @@ name: iOS UI test (screenshots)
 # on the DEFAULT branch, the push route is what works while the project is parked on a side branch.
 on:
   push:
-    branches: [ main ]
-    paths:
-      - './**'
-      - '.github/workflows/ios-ui-test.yml'
+    branches: [ main ]      # every push is looked at; only a commit message carrying [ui-test] runs the job
   workflow_dispatch:
     inputs:
       backend:
@@ -103,11 +100,11 @@ jobs:
           picked = []
           for w in want:
               cands = [w] + fallbacks["iPad" if w.lower().startswith("ipad") else "iPhone"]
-              hit = next(((n, u) for c in cands for (rt, n, u) in avail if n == c), None)
+              hit = next(((n, u) for c in cands for (rt, n, u) in avail if n == c and (n, u) not in picked), None)
               if hit:
                   picked.append(hit)
               else:
-                  print(f"::warning::no simulator for {w}; available: {sorted(set(n for _, n, _ in avail))}", file=sys.stderr)
+                  print(f"::warning::no distinct simulator for {w}; available: {sorted(set(n for _, n, _ in avail))}", file=sys.stderr)
           if not picked:
               print("::error::no usable simulator", file=sys.stderr)
               sys.exit(1)
@@ -118,9 +115,12 @@ jobs:
       - name: Start the mock server
         if: env.BACKEND == 'mock'
         run: |
+          set -o pipefail
           nohup python3 tools/mockserver.py --port 8787 > mock.log 2>&1 &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/healthz && break; sleep 1; done
-          echo; curl -fsS -H "Authorization: Bearer fbk_mock_0123456789abcdef0123456789abcdef" http://127.0.0.1:8787/api/v1/devices | head -c 200; echo
+          echo
+          curl -fsS http://127.0.0.1:8787/healthz > /dev/null || { echo "::error::the mock server did not start"; cat mock.log; exit 1; }
+          curl -fsS -H "Authorization: Bearer fbk_mock_0123456789abcdef0123456789abcdef" http://127.0.0.1:8787/api/v1/devices | head -c 200; echo
 
       - name: Check the real-server inputs
         if: env.BACKEND == 'real'
@@ -133,7 +133,9 @@ jobs:
             exit 1
           fi
           echo "::add-mask::$FB_KEY"
-          curl -sS -o /dev/null -w "GET $FB_BASE/api/v1/devices -> HTTP %{http_code}\n" -H "Authorization: Bearer $FB_KEY" "$FB_BASE/api/v1/devices"
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $FB_KEY" "$FB_BASE/api/v1/devices")
+          echo "GET $FB_BASE/api/v1/devices -> HTTP $code"
+          [ "$code" = "200" ] || { echo "::error::the server refused the key (HTTP $code)"; exit 1; }
 
       - name: Build for testing (iOS Simulator, unsigned)
         run: |
@@ -161,6 +163,7 @@ jobs:
           python3 -c 'import json,sys; [print(n+"\t"+u) for n,u in json.load(open(sys.argv[1]))]' "$RUNNER_TEMP/sims.json" > "$RUNNER_TEMP/sims.tsv"
           while IFS=$'\t' read -r NAME UDID; do
             slug=$(echo "$NAME" | tr -c 'A-Za-z0-9\n' '-' | sed 's/-*$//')
+            [ -e "$RESULTS/$slug.xcresult" ] && slug="$slug-$UDID"
             echo "=== $NAME ($UDID) -> $slug"
             xcrun simctl boot "$UDID" 2>/dev/null || true
             xcrun simctl bootstatus "$UDID" -b || true
@@ -171,12 +174,12 @@ jobs:
               -destination "platform=iOS Simulator,id=$UDID" \
               -only-testing:FolderbirdUITests \
               -resultBundlePath "$RESULTS/$slug.xcresult" \
-              2>&1 | tee "test-$slug.log" | grep -E "Test Case|Test Suite|error:|\*\* |Executed" || true
-            rc=${PIPESTATUS[0]}
+              2>&1 | tee "test-$slug.log" | grep -E "Test Case|Test Suite|error:|\*\* |Executed"
+            rc=${PIPESTATUS[0]}     # xcodebuild's own exit code; set +e keeps a non-matching grep from ending the step
             set -e
             echo "xcodebuild exit $rc for $NAME"
             [ "$rc" = "0" ] || echo "$NAME: xcodebuild exit $rc" >> "$RESULTS/failures.txt"
-            echo "screenshots written: $(ls "$TEST_RUNNER_FB_SHOT_DIR" | wc -l | tr -d ' ')"
+            echo "screenshots written: $(find "$TEST_RUNNER_FB_SHOT_DIR" -name '*.png' | wc -l | tr -d ' ')"
             xcrun simctl shutdown "$UDID" 2>/dev/null || true
           done < "$RUNNER_TEMP/sims.tsv"
 
@@ -232,6 +235,7 @@ jobs:
           RUN: ${{ github.run_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          [ -d shots-jpg ] || { echo "no screenshots to commit"; exit 0; }
           dest="ios-screenshots/run-$RUN"
           mkdir -p "$dest"
           cp -R shots-jpg/. "$dest/" 2>/dev/null || true
@@ -265,3 +269,18 @@ jobs:
           git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin "HEAD:$GITHUB_REF_NAME"
           echo "committed $(git rev-parse --short HEAD) to $GITHUB_REF_NAME"
+
+      # The screenshots are committed and uploaded whatever happened; THEN the job answers for the tests.
+      - name: Fail the job if a simulator run failed
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          bad=0
+          if [ -f results/failures.txt ]; then cat results/failures.txt; bad=1; fi
+          for s in results/*-summary.json; do
+            [ -s "$s" ] || continue
+            r=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result"))' "$s" 2>/dev/null || echo unreadable)
+            echo "$(basename "$s" -summary.json): $r"
+            [ "$r" = "Passed" ] || bad=1
+          done
+          exit $bad

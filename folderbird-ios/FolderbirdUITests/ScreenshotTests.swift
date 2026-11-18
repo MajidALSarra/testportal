@@ -96,7 +96,7 @@ final class ScreenshotTests: XCTestCase {
         shot("launch-signed-in")
         if pad {
             _ = openFirstOnlineDevice()
-            _ = app.buttons["Documents"].waitForExistence(timeout: slow) || app.buttons["This PC"].waitForExistence(timeout: slow)
+            _ = folderRow("Documents", timeout: slow) != nil || app.staticTexts["This PC"].waitForExistence(timeout: 5)
             shot("ipad-portrait-browse")
             XCUIDevice.shared.orientation = .landscapeLeft
         }
@@ -185,10 +185,12 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - Browse / preview / search
 
     private func browse() {
-        // Landing = the home folder (Documents, Pictures…), or "This PC" (the drives) when the home can't be resolved.
-        let landed = app.buttons["Documents"].waitForExistence(timeout: slow)
-            || app.staticTexts["Documents"].waitForExistence(timeout: 5)
-            || app.buttons["This PC"].waitForExistence(timeout: 5)
+        // Landing = the home folder (Documents, Pictures…), or "This PC" (the drive list) when the home can't be
+        // resolved. The crumb bar's own "This PC" button is on every browse screen, so it proves nothing; the
+        // drive list's section header is a static text.
+        let landed = folderRow("Documents", timeout: slow) != nil
+            || app.staticTexts["This PC"].waitForExistence(timeout: 5)
+            || app.staticTexts["Empty folder"].waitForExistence(timeout: 2)
         XCTAssertTrue(landed, "landed on the home folder or on This PC")
         shot("browse-home")
         if open(folder: "Documents") {
@@ -197,14 +199,20 @@ final class ScreenshotTests: XCTestCase {
         }
     }
 
-    /// Folder rows are buttons on the phone and table rows on the iPad; the name text is tappable in both.
+    /// A folder row by name: a Button in the phone's FolderList, a table cell (staticText) in the iPad's
+    /// FolderTable. The idiom's own type gets the caller's timeout (a listing takes 20-60 s on a real server);
+    /// the other type is only a short fallback.
+    private func folderRow(_ name: String, timeout: TimeInterval) -> XCUIElement? {
+        let first = pad ? app.staticTexts[name].firstMatch : app.buttons[name].firstMatch
+        if first.waitForExistence(timeout: timeout) { return first }
+        let second = pad ? app.buttons[name].firstMatch : app.staticTexts[name].firstMatch
+        return second.waitForExistence(timeout: 3) ? second : nil
+    }
+
     private func open(folder name: String) -> Bool {
-        let b = app.buttons[name].firstMatch
-        if b.waitForExistence(timeout: 5) { b.tap(); return true }
-        let t = app.staticTexts[name].firstMatch
-        if t.waitForExistence(timeout: 5) { t.tap(); return true }
-        activity("no folder \(name) on this PC — skipped")
-        return false
+        guard let row = folderRow(name, timeout: 5) else { activity("no folder \(name) on this PC — skipped"); return false }
+        row.tap()
+        return true
     }
 
     private func previews() {
@@ -215,7 +223,7 @@ final class ScreenshotTests: XCTestCase {
         search()            // "report" scoped to the current folder — Documents has four matches
         // The image lives in Pictures: up one level, then into Pictures.
         if goUp() {
-            if app.buttons["Pictures"].firstMatch.waitForExistence(timeout: slow) || app.staticTexts["Pictures"].firstMatch.waitForExistence(timeout: 5) {
+            if folderRow("Pictures", timeout: slow) != nil {
                 _ = open(folder: "Pictures")
                 preview("sunset.png", expectText: nil, as: "image")
                 closePreviewIfDocked()
@@ -345,7 +353,7 @@ final class ScreenshotTests: XCTestCase {
         alert.textFields.firstMatch.typeText(name)
         shot("new-folder-dialog")
         alert.buttons["Create"].tap()
-        let created = app.buttons[name].waitForExistence(timeout: slow) || app.staticTexts[name].waitForExistence(timeout: 5)
+        let created = folderRow(name, timeout: slow) != nil
         XCTAssertTrue(created, "the new folder appears in the listing")
         shot("browse-new-folder")
     }
