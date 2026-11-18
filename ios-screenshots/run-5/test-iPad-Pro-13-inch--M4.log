@@ -1,0 +1,992 @@
+Command line invocation:
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild test-without-building -xctestrun build/Build/Products/Folderbird_iphonesimulator18.5-arm64-x86_64.xctestrun -destination "platform=iOS Simulator,id=04A9C222-F4D9-4FD4-98BE-4054EEE6F66B" "-only-testing:FolderbirdUITests" -resultBundlePath /Users/runner/work/testportal/testportal/results/iPad-Pro-13-inch--M4.xcresult
+
+Writing result bundle at path:
+	/Users/runner/work/testportal/testportal/results/iPad-Pro-13-inch--M4.xcresult
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS Simulator, arch:arm64, id:04A9C222-F4D9-4FD4-98BE-4054EEE6F66B, OS:26.2, name:iPad Pro 13-inch (M4) }
+{ platform:iOS Simulator, arch:x86_64, id:04A9C222-F4D9-4FD4-98BE-4054EEE6F66B, OS:26.2, name:iPad Pro 13-inch (M4) }
+2026-11-18 14:17:21.677010+0000 FolderbirdUITests-Runner[37922:106382] [UIKit App Config] `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+2026-11-18 14:17:21.684737+0000 FolderbirdUITests-Runner[37922:106382] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'All tests' started at 2026-11-18 14:17:34.756.
+Test Suite 'FolderbirdUITests.xctest' started at 2026-11-18 14:17:34.760.
+Test Suite 'ScreenshotTests' started at 2026-11-18 14:17:34.760.
+Test Case '-[FolderbirdUITests.ScreenshotTests test01_SignInScreens]' started.
+    t =     0.00s Start Test at 2026-11-18 14:17:34.764
+    t =     1.25s Set Up
+    t =     1.46s     Setting device orientation to Landscape Left
+    t =     1.91s         Device orientation changed to Landscape Left
+    t =     1.91s         Interface orientation changed to Landscape Right
+    t =     2.57s         Wait for com.apple.DocumentManager.DockFolderViewService to idle
+    t =     3.93s         Wait for com.apple.springboard to idle
+    t =     5.07s Open com.folderbird.companion
+    t =     5.08s     Launch com.folderbird.companion
+    t =    17.56s         Setting up automation session
+    t =    19.38s         Wait for com.folderbird.companion to idle
+    t =    21.68s Waiting 30.0s for "signin.pkce" Button to exist
+    t =    22.71s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.pkce" Button`
+    t =    22.71s         Checking existence of `"signin.pkce" Button`
+    t =    23.24s Added attachment named 'ipad-01-signin'
+    t =    23.25s Tap "signin.toggleKey" Button
+    t =    23.25s     Wait for com.folderbird.companion to idle
+    t =    23.25s     Find the "signin.toggleKey" Button
+    t =    23.28s     Check for interrupting elements affecting "signin.toggleKey" Button
+    t =    23.33s         Wait for com.apple.springboard to idle
+    t =    23.41s     Synthesize event
+    t =    23.85s     Wait for com.folderbird.companion to idle
+    t =    23.85s Waiting 5.0s for "signin.key" SecureTextField to exist
+    t =    24.89s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.key" SecureTextField`
+    t =    24.89s         Checking existence of `"signin.key" SecureTextField`
+    t =    25.21s Added attachment named 'ipad-02-signin-api-key-form'
+    t =    25.21s Waiting 5.0s for "signin.base" TextField to exist
+    t =    26.27s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.base" TextField`
+    t =    26.27s         Checking existence of `"signin.base" TextField`
+    t =    26.30s Find the "signin.base" TextField
+    t =    26.33s Waiting 5.0s for "signin.key" SecureTextField to exist
+    t =    27.33s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.key" SecureTextField`
+    t =    27.33s         Checking existence of `"signin.key" SecureTextField`
+    t =    27.35s Tap "signin.key" SecureTextField
+    t =    27.35s     Wait for com.folderbird.companion to idle
+    t =    27.35s     Find the "signin.key" SecureTextField
+    t =    27.37s     Check for interrupting elements affecting "signin.key" SecureTextField
+    t =    27.40s         Wait for com.apple.springboard to idle
+    t =    27.43s     Synthesize event
+    t =    27.71s     Wait for com.folderbird.companion to idle
+    t =    30.71s Type 'fbk_wrong_key_0000...' into "signin.key" SecureTextField
+    t =    30.71s     Wait for com.folderbird.companion to idle
+    t =    30.82s     Find the "signin.key" SecureTextField
+    t =    31.70s     Check for interrupting elements affecting "signin.key" SecureTextField
+    t =    32.04s         Wait for com.apple.springboard to idle
+    t =    32.10s     Synthesize event
+    t =    32.96s     Wait for com.folderbird.companion to idle
+    t =    32.98s Tap "signin.save" Button
+    t =    32.98s     Wait for com.folderbird.companion to idle
+    t =    33.05s     Find the "signin.save" Button
+    t =    33.22s     Check for interrupting elements affecting "signin.save" Button
+    t =    33.31s         Wait for com.apple.springboard to idle
+    t =    33.34s     Synthesize event
+    t =    33.66s     Wait for com.folderbird.companion to idle
+    t =    33.66s Checking existence of `"signin.status" StaticText`
+    t =    34.27s Checking existence of `"signin.status" StaticText`
+    t =    34.33s Find the "signin.status" StaticText
+    t =    34.72s Added attachment named 'ipad-03-signin-refused-key'
+    t =    34.72s Tear Down
+    t =    34.72s     Terminate com.folderbird.companion:38644
+Test Case '-[FolderbirdUITests.ScreenshotTests test01_SignInScreens]' passed (37.122 seconds).
+Test Case '-[FolderbirdUITests.ScreenshotTests test02_SignedInJourney]' started.
+    t =     0.00s Start Test at 2026-11-18 14:18:11.889
+    t =     0.10s Set Up
+    t =     0.10s     Setting device orientation to Landscape Left
+    t =     0.11s         Wait for com.apple.DocumentManager.DockFolderViewService to idle
+    t =     0.12s         Wait for com.apple.springboard to idle
+    t =     0.12s Open com.folderbird.companion
+    t =     0.12s     Launch com.folderbird.companion
+    t =     3.59s         Setting up automation session
+    t =     4.94s         Wait for com.folderbird.companion to idle
+    t =     6.62s Waiting 30.0s for "signin.toggleKey" Button to exist
+    t =     7.63s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.toggleKey" Button`
+    t =     7.63s         Checking existence of `"signin.toggleKey" Button`
+    t =     7.72s Tap "signin.toggleKey" Button
+    t =     7.72s     Wait for com.folderbird.companion to idle
+    t =     7.73s     Find the "signin.toggleKey" Button
+    t =     7.76s     Check for interrupting elements affecting "signin.toggleKey" Button
+    t =     7.80s         Wait for com.apple.springboard to idle
+    t =     7.84s     Synthesize event
+    t =     8.19s     Wait for com.folderbird.companion to idle
+    t =     8.20s Waiting 5.0s for "signin.base" TextField to exist
+    t =     9.23s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.base" TextField`
+    t =     9.23s         Checking existence of `"signin.base" TextField`
+    t =     9.28s Find the "signin.base" TextField
+    t =     9.35s Waiting 5.0s for "signin.key" SecureTextField to exist
+    t =    10.38s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.key" SecureTextField`
+    t =    10.38s         Checking existence of `"signin.key" SecureTextField`
+    t =    10.42s Tap "signin.key" SecureTextField
+    t =    10.42s     Wait for com.folderbird.companion to idle
+    t =    10.43s     Find the "signin.key" SecureTextField
+    t =    10.47s     Check for interrupting elements affecting "signin.key" SecureTextField
+    t =    10.51s         Wait for com.apple.springboard to idle
+    t =    10.56s     Synthesize event
+    t =    10.90s     Wait for com.folderbird.companion to idle
+    t =    11.54s Type 'fbk_mock_012345678...' into "signin.key" SecureTextField
+    t =    11.54s     Wait for com.folderbird.companion to idle
+    t =    11.60s     Find the "signin.key" SecureTextField
+    t =    11.72s     Check for interrupting elements affecting "signin.key" SecureTextField
+    t =    11.76s         Wait for com.apple.springboard to idle
+    t =    11.80s     Synthesize event
+    t =    12.71s     Wait for com.folderbird.companion to idle
+    t =    13.07s Added attachment named 'ipad-04-signin-key-entered'
+    t =    13.07s Tap "signin.save" Button
+    t =    13.07s     Wait for com.folderbird.companion to idle
+    t =    13.08s     Find the "signin.save" Button
+    t =    13.16s     Check for interrupting elements affecting "signin.save" Button
+    t =    13.21s         Wait for com.apple.springboard to idle
+    t =    13.25s     Synthesize event
+    t =    13.54s     Wait for com.folderbird.companion to idle
+    t =    14.57s Waiting 25.0s for "devices.settings" Button to exist
+    t =    15.64s     Checking `Expect predicate `existsNoRetry == 1` for object "devices.settings" Button`
+    t =    15.64s         Checking existence of `"devices.settings" Button`
+    t =    15.82s Waiting 25.0s for Any (First Match) to exist
+    t =    16.86s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =    16.86s         Checking existence of `Any (First Match)`
+    t =    17.33s Added attachment named 'ipad-05-devices'
+    t =    17.33s Tap "devices.add" Button
+    t =    17.33s     Wait for com.folderbird.companion to idle
+    t =    17.34s     Find the "devices.add" Button
+    t =    17.42s     Check for interrupting elements affecting "devices.add" Button
+    t =    17.50s         Wait for com.apple.springboard to idle
+    t =    17.56s     Synthesize event
+    t =    17.89s     Wait for com.folderbird.companion to idle
+    t =    17.97s Waiting 10.0s for "Add a device" NavigationBar to exist
+    t =    19.01s     Checking `Expect predicate `existsNoRetry == 1` for object "Add a device" NavigationBar`
+    t =    19.01s         Checking existence of `"Add a device" NavigationBar`
+    t =    19.22s Waiting 25.0s for StaticText (First Match) to exist
+    t =    20.27s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    20.27s         Checking existence of `StaticText (First Match)`
+    t =    20.75s Added attachment named 'ipad-06-add-device'
+    t =    20.75s Tap "Done" Button
+    t =    20.75s     Wait for com.folderbird.companion to idle
+    t =    20.75s     Find the "Done" Button
+    t =    20.83s     Check for interrupting elements affecting "Done" Button
+    t =    20.93s         Wait for com.apple.springboard to idle
+    t =    21.00s     Synthesize event
+    t =    21.32s     Wait for com.folderbird.companion to idle
+    t =    21.32s Waiting 5.0s for Any (First Match) to exist
+    t =    22.37s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =    22.37s         Checking existence of `Any (First Match)`
+    t =    22.56s Tap Any (First Match)
+    t =    22.56s     Wait for com.folderbird.companion to idle
+    t =    22.56s     Find the Any (First Match)
+    t =    22.71s     Check for interrupting elements affecting "device.row.offline.3" Other
+    t =    22.79s         Wait for com.apple.springboard to idle
+    t =    22.86s     Synthesize event
+    t =    23.17s     Wait for com.folderbird.companion to idle
+    t =    23.17s Waiting 5.0s for StaticText (First Match) to exist
+    t =    24.21s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    24.21s         Checking existence of `StaticText (First Match)`
+    t =    24.69s Added attachment named 'ipad-07-device-offline-toast'
+    t =    27.69s Waiting 25.0s for Any (First Match) to exist
+    t =    28.74s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =    28.74s         Checking existence of `Any (First Match)`
+    t =    28.90s Tap Any (First Match)
+    t =    28.90s     Wait for com.folderbird.companion to idle
+    t =    28.90s     Find the Any (First Match)
+    t =    29.07s     Check for interrupting elements affecting "device.row.online.1" Other
+    t =    29.16s         Wait for com.apple.springboard to idle
+    t =    29.22s     Synthesize event
+    t =    29.51s     Wait for com.folderbird.companion to idle
+    t =    29.71s Waiting 25.0s for "browse.console" Button to exist
+    t =    30.75s     Checking `Expect predicate `existsNoRetry == 1` for object "browse.console" Button`
+    t =    30.75s         Checking existence of `"browse.console" Button`
+    t =    30.92s Waiting 25.0s for "Documents" Button to exist
+    t =    31.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    31.97s         Checking existence of `"Documents" Button`
+    t =    32.07s         Capturing element debug description
+    t =    33.01s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    33.01s         Checking existence of `"Documents" Button`
+    t =    33.17s         Capturing element debug description
+    t =    34.01s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    34.01s         Checking existence of `"Documents" Button`
+    t =    34.14s         Capturing element debug description
+    t =    34.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    34.97s         Checking existence of `"Documents" Button`
+    t =    35.10s         Capturing element debug description
+    t =    35.93s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    35.93s         Checking existence of `"Documents" Button`
+    t =    36.04s         Capturing element debug description
+    t =    36.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    36.97s         Checking existence of `"Documents" Button`
+    t =    37.10s         Capturing element debug description
+    t =    37.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    37.92s         Checking existence of `"Documents" Button`
+    t =    38.07s         Capturing element debug description
+    t =    39.04s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    39.04s         Checking existence of `"Documents" Button`
+    t =    39.19s         Capturing element debug description
+    t =    39.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    39.92s         Checking existence of `"Documents" Button`
+    t =    40.07s         Capturing element debug description
+    t =    40.98s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    40.98s         Checking existence of `"Documents" Button`
+    t =    41.10s         Capturing element debug description
+    t =    41.95s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    41.95s         Checking existence of `"Documents" Button`
+    t =    42.24s         Capturing element debug description
+    t =    42.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    42.97s         Checking existence of `"Documents" Button`
+    t =    43.08s         Capturing element debug description
+    t =    43.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    43.92s         Checking existence of `"Documents" Button`
+    t =    44.19s         Capturing element debug description
+    t =    44.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    44.92s         Checking existence of `"Documents" Button`
+    t =    45.12s         Capturing element debug description
+    t =    45.98s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    45.98s         Checking existence of `"Documents" Button`
+    t =    46.13s         Capturing element debug description
+    t =    46.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    46.97s         Checking existence of `"Documents" Button`
+    t =    47.13s         Capturing element debug description
+    t =    47.95s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    47.95s         Checking existence of `"Documents" Button`
+    t =    48.34s         Capturing element debug description
+    t =    48.96s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    48.97s         Checking existence of `"Documents" Button`
+    t =    49.20s         Capturing element debug description
+    t =    49.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    49.92s         Checking existence of `"Documents" Button`
+    t =    50.16s         Capturing element debug description
+    t =    50.96s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    50.96s         Checking existence of `"Documents" Button`
+    t =    51.20s         Capturing element debug description
+    t =    51.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    51.92s         Checking existence of `"Documents" Button`
+    t =    52.11s         Capturing element debug description
+    t =    52.93s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    52.94s         Checking existence of `"Documents" Button`
+    t =    53.27s         Capturing element debug description
+    t =    53.96s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    53.96s         Checking existence of `"Documents" Button`
+    t =    54.08s         Capturing element debug description
+    t =    54.96s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    54.96s         Checking existence of `"Documents" Button`
+    t =    55.08s         Capturing element debug description
+    t =    55.93s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    55.93s         Checking existence of `"Documents" Button`
+    t =    56.11s         Capturing element debug description
+    t =    56.12s     Checking existence of `"Documents" Button`
+    t =    56.26s Collecting debug information to assist test failure triage
+    t =    56.26s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =    56.61s Waiting 5.0s for "Documents" StaticText to exist
+    t =    57.63s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" StaticText`
+    t =    57.63s         Checking existence of `"Documents" StaticText`
+    t =    58.37s Added attachment named 'ipad-08-browse-home'
+    t =    58.38s Waiting 5.0s for "Documents" Button to exist
+    t =    59.41s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    59.41s         Checking existence of `"Documents" Button`
+    t =    60.10s         Capturing element debug description
+    t =    60.41s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    60.41s         Checking existence of `"Documents" Button`
+    t =    61.03s         Capturing element debug description
+    t =    61.43s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    61.43s         Checking existence of `"Documents" Button`
+    t =    61.93s         Capturing element debug description
+    t =    62.46s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    62.46s         Checking existence of `"Documents" Button`
+    t =    62.89s         Capturing element debug description
+    t =    63.38s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    63.39s         Checking existence of `"Documents" Button`
+    t =    63.68s         Capturing element debug description
+    t =    63.68s     Checking existence of `"Documents" Button`
+    t =    64.80s Collecting debug information to assist test failure triage
+    t =    64.80s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =    65.19s Waiting 5.0s for "Documents" StaticText to exist
+    t =    66.23s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" StaticText`
+    t =    66.23s         Checking existence of `"Documents" StaticText`
+    t =    66.54s Tap "Documents" StaticText
+    t =    66.54s     Wait for com.folderbird.companion to idle
+    t =    66.54s     Find the "Documents" StaticText
+    t =    66.84s     Check for interrupting elements affecting "Documents" StaticText
+    t =    67.02s         Wait for com.apple.springboard to idle
+    t =    67.11s     Synthesize event
+    t =    67.60s     Wait for com.folderbird.companion to idle
+    t =    68.00s Waiting 25.0s for "notes.txt" StaticText to exist
+    t =    69.01s     Checking `Expect predicate `existsNoRetry == 1` for object "notes.txt" StaticText`
+    t =    69.01s         Checking existence of `"notes.txt" StaticText`
+    t =    69.55s Added attachment named 'ipad-09-browse-documents'
+    t =    69.55s Waiting 5.0s for "notes.txt" StaticText to exist
+    t =    70.57s     Checking `Expect predicate `existsNoRetry == 1` for object "notes.txt" StaticText`
+    t =    70.57s         Checking existence of `"notes.txt" StaticText`
+    t =    71.34s Checking existence of `"notes.txt" StaticText`
+    t =    71.88s Find the "notes.txt" StaticText
+    t =    72.29s Tap "notes.txt" StaticText
+    t =    72.29s     Wait for com.folderbird.companion to idle
+    t =    72.29s     Find the "notes.txt" StaticText
+    t =    72.70s     Check for interrupting elements affecting "notes.txt" StaticText
+    t =    72.83s         Wait for com.apple.springboard to idle
+    t =    72.89s     Synthesize event
+    t =    73.25s     Wait for com.folderbird.companion to idle
+    t =    73.29s Waiting 10.0s for "Close preview" Button to exist
+    t =    74.34s     Checking `Expect predicate `existsNoRetry == 1` for object "Close preview" Button`
+    t =    74.35s         Checking existence of `"Close preview" Button`
+    t =    74.54s Waiting 25.0s for StaticText (First Match) to exist
+    t =    75.56s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    75.56s         Checking existence of `StaticText (First Match)`
+    t =    76.28s Added attachment named 'ipad-10-preview-text'
+    t =    76.29s Waiting 5.0s for "Annual-Report-2026.pdf" StaticText to exist
+    t =    77.35s     Checking `Expect predicate `existsNoRetry == 1` for object "Annual-Report-2026.pdf" StaticText`
+    t =    77.35s         Checking existence of `"Annual-Report-2026.pdf" StaticText`
+    t =    77.72s Checking existence of `"Annual-Report-2026.pdf" StaticText`
+    t =    78.07s Find the "Annual-Report-2026.pdf" StaticText
+    t =    78.41s Tap "Annual-Report-2026.pdf" StaticText
+    t =    78.41s     Wait for com.folderbird.companion to idle
+    t =    78.42s     Find the "Annual-Report-2026.pdf" StaticText
+    t =    78.73s     Check for interrupting elements affecting "Annual-Report-2026.pdf" StaticText
+    t =    78.89s         Wait for com.apple.springboard to idle
+    t =    78.95s     Synthesize event
+    t =    79.31s     Wait for com.folderbird.companion to idle
+    t =    79.89s Waiting 10.0s for "Close preview" Button to exist
+    t =    80.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Close preview" Button`
+    t =    80.93s         Checking existence of `"Close preview" Button`
+    t =    81.14s Waiting 25.0s for StaticText (First Match) to exist
+    t =    82.21s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    82.21s         Checking existence of `StaticText (First Match)`
+    t =    83.23s Added attachment named 'ipad-11-preview-pdf'
+    t =    83.24s Waiting 5.0s for "Q3-Sales-Report.xlsx" StaticText to exist
+    t =    84.28s     Checking `Expect predicate `existsNoRetry == 1` for object "Q3-Sales-Report.xlsx" StaticText`
+    t =    84.28s         Checking existence of `"Q3-Sales-Report.xlsx" StaticText`
+    t =    85.06s Checking existence of `"Q3-Sales-Report.xlsx" StaticText`
+    t =    85.43s Find the "Q3-Sales-Report.xlsx" StaticText
+    t =    85.97s Tap "Q3-Sales-Report.xlsx" StaticText
+    t =    85.97s     Wait for com.folderbird.companion to idle
+    t =    85.98s     Find the "Q3-Sales-Report.xlsx" StaticText
+    t =    86.67s     Check for interrupting elements affecting "Q3-Sales-Report.xlsx" StaticText
+    t =    86.83s         Wait for com.apple.springboard to idle
+    t =    86.87s     Synthesize event
+    t =    87.19s     Wait for com.folderbird.companion to idle
+    t =    87.20s Waiting 10.0s for "Close preview" Button to exist
+    t =    88.23s     Checking `Expect predicate `existsNoRetry == 1` for object "Close preview" Button`
+    t =    88.35s         Checking existence of `"Close preview" Button`
+    t =    89.60s Waiting 25.0s for WebView (First Match) to exist
+    t =    90.68s     Checking `Expect predicate `existsNoRetry == 1` for object WebView (First Match)`
+    t =    90.69s         Checking existence of `WebView (First Match)`
+    t =    91.91s Waiting 25.0s for StaticText (First Match) to exist
+    t =    92.96s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =    92.96s         Checking existence of `StaticText (First Match)`
+    t =   117.27s         Capturing element debug description
+    t =   117.28s     Checking existence of `StaticText (First Match)`
+    t =   125.73s Collecting debug information to assist test failure triage
+    t =   125.73s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+/Users/runner/work/testportal/testportal/folderbird-ios/FolderbirdUITests/ScreenshotTests.swift:242: error: -[FolderbirdUITests.ScreenshotTests test02_SignedInJourney] : XCTAssertTrue failed - the server preview page rendered text for Q3-Sales-Report.xlsx
+    t =   130.66s Added attachment named 'ipad-12-preview-office'
+    t =   130.67s Checking existence of `"Close preview" Button`
+    t =   130.92s Find the "Close preview" Button
+    t =   131.14s Tap "xmark.circle.fill" Button
+    t =   131.14s     Wait for com.folderbird.companion to idle
+    t =   131.15s     Find the "xmark.circle.fill" Button
+    t =   131.30s     Check for interrupting elements affecting "xmark.circle.fill" Button
+    t =   131.51s         Wait for com.apple.springboard to idle
+    t =   131.61s     Synthesize event
+    t =   131.99s     Wait for com.folderbird.companion to idle
+    t =   132.16s Tap "browse.search" Button
+    t =   132.16s     Wait for com.folderbird.companion to idle
+    t =   132.20s     Find the "browse.search" Button
+    t =   132.31s     Check for interrupting elements affecting "browse.search" Button
+    t =   132.48s         Wait for com.apple.springboard to idle
+    t =   132.53s     Synthesize event
+    t =   132.90s     Wait for com.folderbird.companion to idle
+    t =   133.72s Waiting 10.0s for SearchField (First Match) to exist
+    t =   134.80s     Checking `Expect predicate `existsNoRetry == 1` for object SearchField (First Match)`
+    t =   134.83s         Checking existence of `SearchField (First Match)`
+    t =   135.09s Tap SearchField (First Match)
+    t =   135.09s     Wait for com.folderbird.companion to idle
+    t =   135.09s     Find the SearchField (First Match)
+    t =   135.32s     Check for interrupting elements affecting "Search in current folder" SearchField
+    t =   135.45s         Wait for com.apple.springboard to idle
+    t =   135.50s     Synthesize event
+    t =   135.81s     Wait for com.folderbird.companion to idle
+    t =   135.82s Type 'report
+' into "Search in current folder" SearchField
+    t =   135.82s     Wait for com.folderbird.companion to idle
+    t =   135.82s     Find the "Search in current folder" SearchField
+    t =   136.20s     Check for interrupting elements affecting "Search in current folder" SearchField
+    t =   136.44s         Wait for com.apple.springboard to idle
+    t =   136.49s     Synthesize event
+    t =   136.85s     Wait for com.folderbird.companion to idle
+    t =   137.30s Waiting 25.0s for StaticText (First Match) to exist
+    t =   138.35s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =   138.35s         Checking existence of `StaticText (First Match)`
+    t =   138.94s Added attachment named 'ipad-13-search-results'
+    t =   138.94s Checking existence of `"Cancel" Button`
+    t =   139.11s Tap "Cancel" Button
+    t =   139.11s     Wait for com.folderbird.companion to idle
+    t =   139.12s     Find the "Cancel" Button
+    t =   139.29s     Check for interrupting elements affecting "Cancel" Button
+    t =   139.40s         Wait for com.apple.springboard to idle
+    t =   139.44s     Synthesize event
+    t =   139.75s     Wait for com.folderbird.companion to idle
+    t =   139.76s Waiting 10.0s for "browse.console" Button to exist
+    t =   140.78s     Checking `Expect predicate `existsNoRetry == 1` for object "browse.console" Button`
+    t =   140.78s         Checking existence of `"browse.console" Button`
+    t =   140.97s Checking existence of `"browse.up" Button`
+    t =   141.09s Tap "browse.up" Button
+    t =   141.09s     Wait for com.folderbird.companion to idle
+    t =   141.09s     Find the "browse.up" Button
+    t =   141.22s     Check for interrupting elements affecting "browse.up" Button
+    t =   141.46s         Wait for com.apple.springboard to idle
+    t =   141.49s     Synthesize event
+    t =   141.83s     Wait for com.folderbird.companion to idle
+    t =   141.84s Waiting 25.0s for "Pictures" Button to exist
+    t =   142.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   142.88s         Checking existence of `"Pictures" Button`
+    t =   143.43s         Capturing element debug description
+    t =   143.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   143.84s         Checking existence of `"Pictures" Button`
+    t =   144.60s         Capturing element debug description
+    t =   144.91s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   144.91s         Checking existence of `"Pictures" Button`
+    t =   145.54s         Capturing element debug description
+    t =   145.85s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   145.85s         Checking existence of `"Pictures" Button`
+    t =   146.33s         Capturing element debug description
+    t =   146.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   146.84s         Checking existence of `"Pictures" Button`
+    t =   147.22s         Capturing element debug description
+    t =   147.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   147.88s         Checking existence of `"Pictures" Button`
+    t =   148.90s         Capturing element debug description
+    t =   149.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   149.84s         Checking existence of `"Pictures" Button`
+    t =   150.29s         Capturing element debug description
+    t =   150.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   150.88s         Checking existence of `"Pictures" Button`
+    t =   151.27s         Capturing element debug description
+    t =   151.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   151.88s         Checking existence of `"Pictures" Button`
+    t =   152.29s         Capturing element debug description
+    t =   152.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   152.88s         Checking existence of `"Pictures" Button`
+    t =   153.30s         Capturing element debug description
+    t =   153.91s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   153.91s         Checking existence of `"Pictures" Button`
+    t =   154.35s         Capturing element debug description
+    t =   154.86s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   154.86s         Checking existence of `"Pictures" Button`
+    t =   155.50s         Capturing element debug description
+    t =   155.91s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   155.91s         Checking existence of `"Pictures" Button`
+    t =   156.49s         Capturing element debug description
+    t =   156.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   156.88s         Checking existence of `"Pictures" Button`
+    t =   157.35s         Capturing element debug description
+    t =   157.85s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   157.85s         Checking existence of `"Pictures" Button`
+    t =   158.41s         Capturing element debug description
+    t =   158.93s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   158.93s         Checking existence of `"Pictures" Button`
+    t =   159.47s         Capturing element debug description
+    t =   159.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   159.88s         Checking existence of `"Pictures" Button`
+    t =   160.44s         Capturing element debug description
+    t =   160.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   160.84s         Checking existence of `"Pictures" Button`
+    t =   161.28s         Capturing element debug description
+    t =   161.88s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   161.88s         Checking existence of `"Pictures" Button`
+    t =   162.32s         Capturing element debug description
+    t =   162.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   162.84s         Checking existence of `"Pictures" Button`
+    t =   163.24s         Capturing element debug description
+    t =   163.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   163.84s         Checking existence of `"Pictures" Button`
+    t =   164.27s         Capturing element debug description
+    t =   164.91s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   164.91s         Checking existence of `"Pictures" Button`
+    t =   165.63s         Capturing element debug description
+    t =   165.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   165.84s         Checking existence of `"Pictures" Button`
+    t =   166.35s         Capturing element debug description
+    t =   166.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   166.84s         Checking existence of `"Pictures" Button`
+    t =   167.15s         Capturing element debug description
+    t =   167.16s     Checking existence of `"Pictures" Button`
+    t =   167.82s Collecting debug information to assist test failure triage
+    t =   167.82s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =   168.41s Waiting 5.0s for "Pictures" StaticText to exist
+    t =   169.41s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" StaticText`
+    t =   169.42s         Checking existence of `"Pictures" StaticText`
+    t =   169.92s Waiting 5.0s for "Pictures" Button to exist
+    t =   170.94s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   170.94s         Checking existence of `"Pictures" Button`
+    t =   171.94s         Capturing element debug description
+    t =   172.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   172.97s         Checking existence of `"Pictures" Button`
+    t =   173.78s         Capturing element debug description
+    t =   173.97s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" Button`
+    t =   173.97s         Checking existence of `"Pictures" Button`
+    t =   174.93s         Capturing element debug description
+    t =   174.93s     Checking existence of `"Pictures" Button`
+    t =   175.52s Collecting debug information to assist test failure triage
+    t =   175.52s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =   175.80s Waiting 5.0s for "Pictures" StaticText to exist
+    t =   176.83s     Checking `Expect predicate `existsNoRetry == 1` for object "Pictures" StaticText`
+    t =   176.83s         Checking existence of `"Pictures" StaticText`
+    t =   177.40s Tap "Pictures" StaticText
+    t =   177.40s     Wait for com.folderbird.companion to idle
+    t =   177.40s     Find the "Pictures" StaticText
+    t =   178.18s     Check for interrupting elements affecting "Pictures" StaticText
+    t =   178.39s         Wait for com.apple.springboard to idle
+    t =   178.47s     Synthesize event
+    t =   178.89s     Wait for com.folderbird.companion to idle
+    t =   179.02s Waiting 5.0s for "sunset.png" StaticText to exist
+    t =   180.08s     Checking `Expect predicate `existsNoRetry == 1` for object "sunset.png" StaticText`
+    t =   180.08s         Checking existence of `"sunset.png" StaticText`
+    t =   180.57s Checking existence of `"sunset.png" StaticText`
+    t =   181.09s Find the "sunset.png" StaticText
+    t =   181.51s Tap "sunset.png" StaticText
+    t =   181.51s     Wait for com.folderbird.companion to idle
+    t =   181.51s     Find the "sunset.png" StaticText
+    t =   182.00s     Check for interrupting elements affecting "sunset.png" StaticText
+    t =   182.18s         Wait for com.apple.springboard to idle
+    t =   182.26s     Synthesize event
+    t =   182.63s     Wait for com.folderbird.companion to idle
+    t =   182.68s Waiting 10.0s for "Close preview" Button to exist
+    t =   183.70s     Checking `Expect predicate `existsNoRetry == 1` for object "Close preview" Button`
+    t =   183.70s         Checking existence of `"Close preview" Button`
+    t =   183.91s Waiting 2.0s for "Loading preview…" StaticText to exist
+    t =   184.95s     Checking `Expect predicate `existsNoRetry == 1` for object "Loading preview…" StaticText`
+    t =   184.95s         Checking existence of `"Loading preview…" StaticText`
+    t =   185.18s         Capturing element debug description
+    t =   185.92s     Checking `Expect predicate `existsNoRetry == 1` for object "Loading preview…" StaticText`
+    t =   185.92s         Checking existence of `"Loading preview…" StaticText`
+    t =   186.13s         Capturing element debug description
+    t =   186.13s     Checking existence of `"Loading preview…" StaticText`
+    t =   186.27s Collecting debug information to assist test failure triage
+    t =   186.27s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =   186.67s Checking existence of `"Loading preview…" StaticText`
+    t =   188.92s Added attachment named 'ipad-14-preview-image'
+    t =   188.94s Checking existence of `"Close preview" Button`
+    t =   189.26s Find the "Close preview" Button
+    t =   189.52s Tap "xmark.circle.fill" Button
+    t =   189.52s     Wait for com.folderbird.companion to idle
+    t =   189.53s     Find the "xmark.circle.fill" Button
+    t =   189.79s     Check for interrupting elements affecting "xmark.circle.fill" Button
+    t =   190.12s         Wait for com.apple.springboard to idle
+    t =   190.20s     Synthesize event
+    t =   190.63s     Wait for com.folderbird.companion to idle
+    t =   190.66s Tap "browse.console" Button
+    t =   190.66s     Wait for com.folderbird.companion to idle
+    t =   190.69s     Find the "browse.console" Button
+    t =   190.99s     Check for interrupting elements affecting "browse.console" Button
+    t =   191.15s         Wait for com.apple.springboard to idle
+    t =   191.20s     Synthesize event
+    t =   191.65s     Wait for com.folderbird.companion to idle
+    t =   194.50s Waiting 15.0s for "console.input" TextField to exist
+    t =   195.55s     Checking `Expect predicate `existsNoRetry == 1` for object "console.input" TextField`
+    t =   195.55s         Checking existence of `"console.input" TextField`
+    t =   196.39s Added attachment named 'ipad-15-console-empty'
+    t =   196.40s Tap "console.input" TextField
+    t =   196.40s     Wait for com.folderbird.companion to idle
+    t =   196.40s     Find the "console.input" TextField
+    t =   196.61s     Check for interrupting elements affecting "console.input" TextField
+    t =   196.85s         Wait for com.apple.springboard to idle
+    t =   196.94s     Synthesize event
+    t =   197.29s     Wait for com.folderbird.companion to idle
+    t =   197.29s Type 'hostname' into "console.input" TextField
+    t =   197.29s     Wait for com.folderbird.companion to idle
+    t =   197.31s     Find the "console.input" TextField
+    t =   197.80s     Check for interrupting elements affecting "console.input" TextField
+    t =   197.99s         Wait for com.apple.springboard to idle
+    t =   198.05s     Synthesize event
+    t =   198.45s     Wait for com.folderbird.companion to idle
+    t =   198.54s Tap "console.send" Button
+    t =   198.54s     Wait for com.folderbird.companion to idle
+    t =   198.61s     Find the "console.send" Button
+    t =   198.98s     Check for interrupting elements affecting "console.send" Button
+    t =   199.15s         Wait for com.apple.springboard to idle
+    t =   199.20s     Synthesize event
+    t =   199.55s     Wait for com.folderbird.companion to idle
+    t =   199.65s Waiting 25.0s for StaticText (First Match) to exist
+    t =   200.68s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =   200.68s         Checking existence of `StaticText (First Match)`
+    t =   200.91s Checking existence of `"running…" StaticText`
+    t =   201.53s Added attachment named 'ipad-16-console-output'
+    t =   201.54s Tap "console.input" TextField
+    t =   201.54s     Wait for com.folderbird.companion to idle
+    t =   201.55s     Find the "console.input" TextField
+    t =   201.86s     Check for interrupting elements affecting "console.input" TextField
+    t =   202.04s         Wait for com.apple.springboard to idle
+    t =   202.11s     Synthesize event
+    t =   202.46s     Wait for com.folderbird.companion to idle
+    t =   202.46s Type 'del C:\Users\Alex\...' into "console.input" TextField
+    t =   202.46s     Wait for com.folderbird.companion to idle
+    t =   202.47s     Find the "console.input" TextField
+    t =   202.78s     Check for interrupting elements affecting "console.input" TextField
+    t =   203.07s         Wait for com.apple.springboard to idle
+    t =   203.12s     Synthesize event
+    t =   203.97s     Wait for com.folderbird.companion to idle
+    t =   203.98s Tap "console.send" Button
+    t =   203.98s     Wait for com.folderbird.companion to idle
+    t =   203.98s     Find the "console.send" Button
+    t =   204.22s     Check for interrupting elements affecting "console.send" Button
+    t =   204.50s         Wait for com.apple.springboard to idle
+    t =   204.56s     Synthesize event
+    t =   204.89s     Wait for com.folderbird.companion to idle
+    t =   205.61s Waiting 25.0s for Alert (First Match) to exist
+    t =   206.68s     Checking `Expect predicate `existsNoRetry == 1` for object Alert (First Match)`
+    t =   206.68s         Checking existence of `Alert (First Match)`
+    t =   207.05s Added attachment named 'ipad-17-console-destructive-confirm'
+    t =   207.05s Checking existence of `Alert (First Match)`
+    t =   207.10s Tap "No" Button
+    t =   207.10s     Wait for com.folderbird.companion to idle
+    t =   207.11s     Find the "No" Button
+    t =   207.23s     Check for interrupting elements affecting "No" Button
+    t =   207.48s         Wait for com.apple.springboard to idle
+    t =   207.53s     Synthesize event
+    t =   207.93s     Wait for com.folderbird.companion to idle
+    t =   208.35s Waiting 10.0s for StaticText (First Match) to exist
+    t =   209.36s     Checking `Expect predicate `existsNoRetry == 1` for object StaticText (First Match)`
+    t =   209.36s         Checking existence of `StaticText (First Match)`
+    t =   210.10s Added attachment named 'ipad-18-console-declined'
+    t =   210.10s Tap "Close" Button
+    t =   210.10s     Wait for com.folderbird.companion to idle
+    t =   210.11s     Find the "Close" Button
+    t =   210.43s     Check for interrupting elements affecting "Close" Button
+    t =   210.57s         Wait for com.apple.springboard to idle
+    t =   210.63s     Synthesize event
+    t =   210.97s     Wait for com.folderbird.companion to idle
+    t =   211.04s Waiting 10.0s for "browse.add" Button to exist
+    t =   212.12s     Checking `Expect predicate `existsNoRetry == 1` for object "browse.add" Button`
+    t =   212.12s         Checking existence of `"browse.add" Button`
+    t =   212.32s Tap "browse.add" Button[0.50, 0.50]
+    t =   212.32s     Wait for com.folderbird.companion to idle
+    t =   212.33s     Find the "browse.add" Button
+    t =   212.50s     Check for interrupting elements affecting "browse.add" Button
+    t =   212.66s         Wait for com.apple.springboard to idle
+    t =   212.71s     Synthesize event
+    t =   212.76s         Find the "browse.add" Button
+    t =   213.05s         Find the "browse.add" Button
+    t =   213.28s         Find the "browse.add" Button
+    t =   213.79s     Wait for com.folderbird.companion to idle
+    t =   213.82s Waiting 5.0s for Any (First Match) to exist
+    t =   214.88s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   214.88s         Checking existence of `Any (First Match)`
+    t =   215.20s Tap Any (First Match)
+    t =   215.20s     Wait for com.folderbird.companion to idle
+    t =   215.22s     Find the Any (First Match)
+    t =   215.35s     Check for interrupting elements affecting "folder.badge.plus" Button
+    t =   215.50s         Wait for com.apple.springboard to idle
+    t =   215.58s     Synthesize event
+    t =   215.90s     Wait for com.folderbird.companion to idle
+    t =   216.52s Waiting 5.0s for "New folder" Alert to exist
+    t =   217.56s     Checking `Expect predicate `existsNoRetry == 1` for object "New folder" Alert`
+    t =   217.57s         Checking existence of `"New folder" Alert`
+    t =   217.84s Tap TextField (First Match)
+    t =   217.84s     Wait for com.folderbird.companion to idle
+    t =   217.84s     Find the TextField (First Match)
+    t =   217.98s     Check for interrupting elements affecting "Folder name" TextField
+    t =   218.19s         Wait for com.apple.springboard to idle
+    t =   218.23s     Synthesize event
+    t =   218.59s     Wait for com.folderbird.companion to idle
+    t =   218.60s Type 'From the iPad' into TextField (First Match)
+    t =   218.60s     Wait for com.folderbird.companion to idle
+    t =   218.60s     Find the TextField (First Match)
+    t =   218.77s     Check for interrupting elements affecting "Folder name" TextField
+    t =   218.99s         Wait for com.apple.springboard to idle
+    t =   219.04s     Synthesize event
+    t =   219.51s     Wait for com.folderbird.companion to idle
+    t =   219.83s Added attachment named 'ipad-19-new-folder-dialog'
+    t =   219.84s Tap "Create" Button
+    t =   219.84s     Wait for com.folderbird.companion to idle
+    t =   219.84s     Find the "Create" Button
+    t =   220.14s     Check for interrupting elements affecting "Create" Button
+    t =   220.32s         Wait for com.apple.springboard to idle
+    t =   220.37s     Synthesize event
+    t =   220.73s     Wait for com.folderbird.companion to idle
+    t =   220.94s Waiting 25.0s for "From the iPad" Button to exist
+    t =   221.98s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   221.98s         Checking existence of `"From the iPad" Button`
+    t =   222.12s         Capturing element debug description
+    t =   222.94s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   222.94s         Checking existence of `"From the iPad" Button`
+    t =   223.07s         Capturing element debug description
+    t =   224.02s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   224.02s         Checking existence of `"From the iPad" Button`
+    t =   224.16s         Capturing element debug description
+    t =   224.98s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   224.98s         Checking existence of `"From the iPad" Button`
+    t =   225.36s         Capturing element debug description
+    t =   225.97s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   225.97s         Checking existence of `"From the iPad" Button`
+    t =   226.18s         Capturing element debug description
+    t =   227.01s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   227.01s         Checking existence of `"From the iPad" Button`
+    t =   227.16s         Capturing element debug description
+    t =   227.97s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   227.97s         Checking existence of `"From the iPad" Button`
+    t =   228.21s         Capturing element debug description
+    t =   228.95s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   228.95s         Checking existence of `"From the iPad" Button`
+    t =   229.14s         Capturing element debug description
+    t =   229.96s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   229.96s         Checking existence of `"From the iPad" Button`
+    t =   230.09s         Capturing element debug description
+    t =   231.01s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   231.01s         Checking existence of `"From the iPad" Button`
+    t =   231.13s         Capturing element debug description
+    t =   231.97s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   231.97s         Checking existence of `"From the iPad" Button`
+    t =   232.13s         Capturing element debug description
+    t =   232.96s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   232.96s         Checking existence of `"From the iPad" Button`
+    t =   233.09s         Capturing element debug description
+    t =   233.94s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   233.94s         Checking existence of `"From the iPad" Button`
+    t =   234.04s         Capturing element debug description
+    t =   234.96s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   234.96s         Checking existence of `"From the iPad" Button`
+    t =   235.06s         Capturing element debug description
+    t =   235.97s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   235.97s         Checking existence of `"From the iPad" Button`
+    t =   236.12s         Capturing element debug description
+    t =   236.94s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   236.94s         Checking existence of `"From the iPad" Button`
+    t =   237.10s         Capturing element debug description
+    t =   238.01s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   238.01s         Checking existence of `"From the iPad" Button`
+    t =   238.17s         Capturing element debug description
+    t =   238.98s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   238.98s         Checking existence of `"From the iPad" Button`
+    t =   239.09s         Capturing element debug description
+    t =   240.01s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   240.01s         Checking existence of `"From the iPad" Button`
+    t =   240.18s         Capturing element debug description
+    t =   241.01s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   241.01s         Checking existence of `"From the iPad" Button`
+    t =   241.16s         Capturing element debug description
+    t =   241.96s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   241.96s         Checking existence of `"From the iPad" Button`
+    t =   242.09s         Capturing element debug description
+    t =   242.98s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   242.98s         Checking existence of `"From the iPad" Button`
+    t =   243.09s         Capturing element debug description
+    t =   243.97s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   243.97s         Checking existence of `"From the iPad" Button`
+    t =   244.12s         Capturing element debug description
+    t =   244.94s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   244.95s         Checking existence of `"From the iPad" Button`
+    t =   245.09s         Capturing element debug description
+    t =   245.94s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" Button`
+    t =   245.95s         Checking existence of `"From the iPad" Button`
+    t =   246.13s         Capturing element debug description
+    t =   246.13s     Checking existence of `"From the iPad" Button`
+    t =   246.29s Collecting debug information to assist test failure triage
+    t =   246.29s     Requesting snapshot of accessibility hierarchy for app with pid 39302
+    t =   246.67s Waiting 5.0s for "From the iPad" StaticText to exist
+    t =   247.70s     Checking `Expect predicate `existsNoRetry == 1` for object "From the iPad" StaticText`
+    t =   247.70s         Checking existence of `"From the iPad" StaticText`
+    t =   248.30s Added attachment named 'ipad-20-browse-new-folder'
+    t =   248.31s Waiting 10.0s for "devices.settings" Button to exist
+    t =   249.33s     Checking `Expect predicate `existsNoRetry == 1` for object "devices.settings" Button`
+    t =   249.33s         Checking existence of `"devices.settings" Button`
+    t =   249.46s Tap "devices.settings" Button
+    t =   249.46s     Wait for com.folderbird.companion to idle
+    t =   249.46s     Find the "devices.settings" Button
+    t =   249.58s     Check for interrupting elements affecting "devices.settings" Button
+    t =   249.75s         Wait for com.apple.springboard to idle
+    t =   249.82s     Synthesize event
+    t =   250.24s     Wait for com.folderbird.companion to idle
+    t =   250.88s Waiting 10.0s for "settings.test" Button to exist
+    t =   251.90s     Checking `Expect predicate `existsNoRetry == 1` for object "settings.test" Button`
+    t =   251.91s         Checking existence of `"settings.test" Button`
+    t =   252.52s Added attachment named 'ipad-21-settings'
+    t =   252.53s Tap "settings.test" Button
+    t =   252.53s     Wait for com.folderbird.companion to idle
+    t =   252.65s     Find the "settings.test" Button
+    t =   252.92s     Check for interrupting elements affecting "settings.test" Button
+    t =   253.18s         Wait for com.apple.springboard to idle
+    t =   253.22s     Synthesize event
+    t =   253.57s     Wait for com.folderbird.companion to idle
+    t =   253.65s Waiting 25.0s for "settings.testResult" StaticText to exist
+    t =   254.68s     Checking `Expect predicate `existsNoRetry == 1` for object "settings.testResult" StaticText`
+    t =   254.68s         Checking existence of `"settings.testResult" StaticText`
+    t =   254.87s Find the "settings.testResult" StaticText
+    t =   255.08s Find the "settings.testResult" StaticText
+    t =   255.59s Added attachment named 'ipad-22-settings-connection-test'
+    t =   255.59s Tap "Dark" Button
+    t =   255.59s     Wait for com.folderbird.companion to idle
+    t =   255.60s     Find the "Dark" Button
+    t =   256.23s     Check for interrupting elements affecting "Dark" Button
+    t =   256.37s         Wait for com.apple.springboard to idle
+    t =   256.40s     Synthesize event
+    t =   256.77s     Wait for com.folderbird.companion to idle
+    t =   258.15s Added attachment named 'ipad-23-settings-dark'
+    t =   258.16s Tap "Done" Button
+    t =   258.16s     Wait for com.folderbird.companion to idle
+    t =   258.16s     Find the "Done" Button
+    t =   258.39s     Check for interrupting elements affecting "Done" Button
+    t =   258.58s         Wait for com.apple.springboard to idle
+    t =   258.63s     Synthesize event
+    t =   259.04s     Wait for com.folderbird.companion to idle
+    t =   260.43s Added attachment named 'ipad-24-devices-dark'
+    t =   260.43s Tap "devices.settings" Button
+    t =   260.43s     Wait for com.folderbird.companion to idle
+    t =   260.44s     Find the "devices.settings" Button
+    t =   260.64s     Check for interrupting elements affecting "devices.settings" Button
+    t =   260.77s         Wait for com.apple.springboard to idle
+    t =   260.82s     Synthesize event
+    t =   261.18s     Wait for com.folderbird.companion to idle
+    t =   261.37s Waiting 10.0s for "settings.test" Button to exist
+    t =   262.37s     Checking `Expect predicate `existsNoRetry == 1` for object "settings.test" Button`
+    t =   262.37s         Checking existence of `"settings.test" Button`
+    t =   262.62s Tap "System" Button
+    t =   262.62s     Wait for com.folderbird.companion to idle
+    t =   262.62s     Find the "System" Button
+    t =   263.49s     Check for interrupting elements affecting "System" Button
+    t =   263.62s         Wait for com.apple.springboard to idle
+    t =   263.65s     Synthesize event
+    t =   263.98s     Wait for com.folderbird.companion to idle
+    t =   264.99s Checking existence of `"settings.signout" Button`
+    t =   265.13s Waiting 10.0s for "settings.signout" Button to exist
+    t =   266.16s     Checking `Expect predicate `existsNoRetry == 1` for object "settings.signout" Button`
+    t =   266.16s         Checking existence of `"settings.signout" Button`
+    t =   266.36s Tap "settings.signout" Button
+    t =   266.36s     Wait for com.folderbird.companion to idle
+    t =   266.36s     Find the "settings.signout" Button
+    t =   266.49s     Check for interrupting elements affecting "settings.signout" Button
+    t =   266.61s         Wait for com.apple.springboard to idle
+    t =   266.65s     Synthesize event
+    t =   266.96s     Wait for com.folderbird.companion to idle
+    t =   267.07s Waiting 20.0s for "signin.pkce" Button to exist
+    t =   268.08s     Checking `Expect predicate `existsNoRetry == 1` for object "signin.pkce" Button`
+    t =   268.08s         Checking existence of `"signin.pkce" Button`
+    t =   268.40s Added attachment named 'ipad-25-signed-out'
+    t =   268.41s Tear Down
+    t =   268.41s     Terminate com.folderbird.companion:39302
+Test Case '-[FolderbirdUITests.ScreenshotTests test02_SignedInJourney]' failed (271.191 seconds).
+Test Case '-[FolderbirdUITests.ScreenshotTests test03_LaunchSignedIn]' started.
+    t =     0.00s Start Test at 2026-11-18 14:22:43.084
+    t =     0.20s Set Up
+    t =     0.21s     Setting device orientation to Landscape Left
+    t =     0.22s         Wait for com.apple.DocumentManager.DockFolderViewService to idle
+    t =     0.24s         Wait for com.apple.springboard to idle
+    t =     0.25s Setting device orientation to Portrait
+    t =     0.27s     Device orientation changed to Portrait
+    t =     0.43s     Interface orientation changed to Portrait
+    t =     1.31s     Wait for com.apple.DocumentManager.DockFolderViewService to idle
+    t =     1.32s     Wait for com.apple.springboard to idle
+    t =     1.33s Open com.folderbird.companion
+    t =     1.33s     Launch com.folderbird.companion
+    t =     4.70s         Setting up automation session
+    t =     7.75s         Wait for com.folderbird.companion to idle
+    t =    10.47s Waiting 25.0s for "devices.settings" Button to exist
+    t =    11.50s     Checking `Expect predicate `existsNoRetry == 1` for object "devices.settings" Button`
+    t =    11.50s         Checking existence of `"devices.settings" Button`
+    t =    11.80s Waiting 25.0s for Any (First Match) to exist
+    t =    12.83s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =    12.83s         Checking existence of `Any (First Match)`
+    t =    13.37s Added attachment named 'ipad-26-launch-signed-in'
+    t =    13.37s Waiting 25.0s for Any (First Match) to exist
+    t =    14.42s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =    14.42s         Checking existence of `Any (First Match)`
+    t =    14.58s Tap Any (First Match)
+    t =    14.58s     Wait for com.folderbird.companion to idle
+    t =    14.58s     Find the Any (First Match)
+    t =    14.71s     Check for interrupting elements affecting "device.row.online.1" Other
+    t =    14.79s         Wait for com.apple.springboard to idle
+    t =    14.86s     Synthesize event
+    t =    15.18s     Wait for com.folderbird.companion to idle
+    t =    15.39s Waiting 25.0s for "browse.console" Button to exist
+    t =    16.40s     Checking `Expect predicate `existsNoRetry == 1` for object "browse.console" Button`
+    t =    16.40s         Checking existence of `"browse.console" Button`
+    t =    16.58s Waiting 25.0s for "Documents" Button to exist
+    t =    17.61s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    17.62s         Checking existence of `"Documents" Button`
+    t =    17.74s         Capturing element debug description
+    t =    18.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    18.62s         Checking existence of `"Documents" Button`
+    t =    18.79s         Capturing element debug description
+    t =    19.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    19.62s         Checking existence of `"Documents" Button`
+    t =    19.75s         Capturing element debug description
+    t =    20.59s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    20.59s         Checking existence of `"Documents" Button`
+    t =    20.73s         Capturing element debug description
+    t =    21.63s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    21.63s         Checking existence of `"Documents" Button`
+    t =    21.79s         Capturing element debug description
+    t =    22.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    22.62s         Checking existence of `"Documents" Button`
+    t =    22.71s         Capturing element debug description
+    t =    23.63s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    23.63s         Checking existence of `"Documents" Button`
+    t =    23.75s         Capturing element debug description
+    t =    24.58s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    24.59s         Checking existence of `"Documents" Button`
+    t =    24.71s         Capturing element debug description
+    t =    25.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    25.62s         Checking existence of `"Documents" Button`
+    t =    25.71s         Capturing element debug description
+    t =    26.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    26.62s         Checking existence of `"Documents" Button`
+    t =    26.74s         Capturing element debug description
+    t =    27.67s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    27.67s         Checking existence of `"Documents" Button`
+    t =    27.78s         Capturing element debug description
+    t =    28.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    28.62s         Checking existence of `"Documents" Button`
+    t =    28.74s         Capturing element debug description
+    t =    29.66s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    29.66s         Checking existence of `"Documents" Button`
+    t =    29.75s         Capturing element debug description
+    t =    30.65s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    30.65s         Checking existence of `"Documents" Button`
+    t =    30.75s         Capturing element debug description
+    t =    31.60s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    31.60s         Checking existence of `"Documents" Button`
+    t =    31.78s         Capturing element debug description
+    t =    32.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    32.62s         Checking existence of `"Documents" Button`
+    t =    32.74s         Capturing element debug description
+    t =    33.59s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    33.59s         Checking existence of `"Documents" Button`
+    t =    33.70s         Capturing element debug description
+    t =    34.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    34.62s         Checking existence of `"Documents" Button`
+    t =    34.71s         Capturing element debug description
+    t =    35.61s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    35.62s         Checking existence of `"Documents" Button`
+    t =    35.73s         Capturing element debug description
+    t =    36.63s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    36.63s         Checking existence of `"Documents" Button`
+    t =    36.74s         Capturing element debug description
+    t =    37.64s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    37.64s         Checking existence of `"Documents" Button`
+    t =    37.82s         Capturing element debug description
+    t =    38.64s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    38.64s         Checking existence of `"Documents" Button`
+    t =    38.94s         Capturing element debug description
+    t =    39.62s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    39.62s         Checking existence of `"Documents" Button`
+    t =    39.77s         Capturing element debug description
+    t =    40.59s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    40.59s         Checking existence of `"Documents" Button`
+    t =    40.77s         Capturing element debug description
+    t =    41.59s     Checking `Expect predicate `existsNoRetry == 1` for object "Documents" Button`
+    t =    41.59s         Checking existence of `"Documents" Button`
+    t =    41.76s         Capturing element debug description
+    t =    41.76s     Checking existence of `"Documents" Button`
+    t =    41.91s Collecting debug information to assist test failure triage
+    t =    41.91s     Requesting snapshot of accessibility hierarchy for app with pid 50408
+    t =    42.24s Waiting 25.0s for "This PC" Button to exist
+    t =    43.29s     Checking `Expect predicate `existsNoRetry == 1` for object "This PC" Button`
+    t =    43.29s         Checking existence of `"This PC" Button`
+    t =    44.08s Added attachment named 'ipad-27-ipad-portrait-browse'
+    t =    44.08s Setting device orientation to Landscape Left
+    t =    44.11s     Device orientation changed to Landscape Left
+    t =    44.39s     Interface orientation changed to Landscape Right
+    t =    45.18s     Wait for com.folderbird.companion to idle
+    t =    45.99s     Wait for com.apple.springboard to idle
+    t =    46.07s Tear Down
+    t =    46.21s     Terminate com.folderbird.companion:50408
+Test Case '-[FolderbirdUITests.ScreenshotTests test03_LaunchSignedIn]' passed (49.002 seconds).
+Test Suite 'ScreenshotTests' failed at 2026-11-18 14:23:32.089.
+	 Executed 3 tests, with 1 failure (0 unexpected) in 357.315 (357.328) seconds
+Test Suite 'FolderbirdUITests.xctest' failed at 2026-11-18 14:23:32.090.
+	 Executed 3 tests, with 1 failure (0 unexpected) in 357.315 (357.330) seconds
+Test Suite 'All tests' failed at 2026-11-18 14:23:32.091.
+	 Executed 3 tests, with 1 failure (0 unexpected) in 357.315 (357.335) seconds
+2026-11-18 14:24:15.547 xcodebuild[18380:58197] [MT] IDETestOperationsObserverDebug: 795.079 elapsed -- Testing started completed.
+2026-11-18 14:24:15.548 xcodebuild[18380:58197] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-18 14:24:15.548 xcodebuild[18380:58197] [MT] IDETestOperationsObserverDebug: 795.080 sec, +795.080 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/testportal/testportal/results/iPad-Pro-13-inch--M4.xcresult
+
+Failing tests:
+	ScreenshotTests.test02_SignedInJourney()
+
+** TEST EXECUTE FAILED **
+
+Testing started

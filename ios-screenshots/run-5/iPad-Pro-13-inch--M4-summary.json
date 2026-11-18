@@ -1,0 +1,49 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "04A9C222-F4D9-4FD4-98BE-4054EEE6F66B",
+        "deviceName" : "iPad Pro 13-inch (M4)",
+        "modelName" : "iPad Pro 13-inch (M4)",
+        "osBuildNumber" : "23C54",
+        "osVersion" : "26.2",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 1,
+      "passedTests" : 2,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Folderbird · Built with macOS 15.8.2",
+  "expectedFailures" : 0,
+  "failedTests" : 1,
+  "finishTime" : 1795011855.752,
+  "passedTests" : 2,
+  "result" : "Failed",
+  "skippedTests" : 0,
+  "startTime" : 1795011059.28,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+    {
+      "failureText" : "XCTAssertTrue failed - the server preview page rendered text for Q3-Sales-Report.xlsx",
+      "targetName" : "FolderbirdUITests",
+      "testIdentifier" : 2,
+      "testIdentifierString" : "ScreenshotTests/test02_SignedInJourney()",
+      "testIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests/test02_SignedInJourney",
+      "testName" : "test02_SignedInJourney()"
+    }
+  ],
+  "title" : "Test - Folderbird",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 3
+}
