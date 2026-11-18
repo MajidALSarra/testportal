@@ -259,7 +259,12 @@ agent's verified snapshot, durable facts and working rules.
 choice (not "Dot"), posts in Slack as user `U0C8H6Q3LEA`. The receipt watcher gives its messages :eyes: and
 wakes the coordinator, which relays what it addresses to an agent. Wren's
 words are a teammate's, not Majid's go: production changes, spending and
-deletions still need Majid himself.
+deletions still need Majid himself. Wren does not change code or apps alone
+(Majid, 2026-11-18 13:53 Riyadh: "I trust Claude more than ChatGPT on
+technical stuff"): Wren may propose a change, and a Claude agent reviews it
+and says OK before it goes in. Finch checks folderbird-web, Swift the Windows
+app, Falcon anything on the live servers. Wren's research, reviews and emails
+are unchanged.
 
 **Mail desk (not a Claude Code session).** "Email sending setup" is a Claude in
 Chrome chat on cloudpc that sends mail by typing in Majid's Titan webmail tab
