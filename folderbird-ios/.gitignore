@@ -4,6 +4,7 @@ Folderbird/Info.plist
 Folderbird/Folderbird.entitlements
 ShareExtension/Info.plist
 ShareExtension/FolderbirdShare.entitlements
+FolderbirdUITests/Info.plist
 
 # Xcode
 build/

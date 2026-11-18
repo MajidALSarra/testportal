@@ -37,11 +37,13 @@ struct SignInView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(busy)
+                .accessibilityIdentifier("signin.pkce")
 
                 Button("Create an account") {
                     if let u = URL(string: prefs.normalizedBase + "/Account/Register") { safari = IdentifiableURL(url: u) }
                 }
                 .font(.subheadline)
+                .accessibilityIdentifier("signin.register")
 
                 HStack {
                     Rectangle().fill(Color.secondary.opacity(0.3)).frame(height: 1)
@@ -52,6 +54,7 @@ struct SignInView: View {
 
                 Button(showKey ? "Hide API key sign-in" : "Use an API key instead") { showKey.toggle() }
                     .font(.subheadline)
+                    .accessibilityIdentifier("signin.toggleKey")
 
                 if showKey {
                     VStack(spacing: 10) {
@@ -60,18 +63,22 @@ struct SignInView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.URL)
+                            .accessibilityIdentifier("signin.base")
                         SecureField("API key (fbk_…)", text: $key)
                             .textFieldStyle(.roundedBorder)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .accessibilityIdentifier("signin.key")
                         Button(busy ? "Testing…" : "Save & connect") { saveKey() }
                             .buttonStyle(.borderedProminent)
                             .disabled(busy)
                             .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("signin.save")
                     }
                 }
                 if let s = status {
                     Text(s).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        .accessibilityIdentifier("signin.status")
                 }
                 Spacer().frame(height: 20)
                 Text("📍 Riyadh, Saudi Arabia").font(.caption).foregroundStyle(.secondary)

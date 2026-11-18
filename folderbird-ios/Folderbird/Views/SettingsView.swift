@@ -30,6 +30,7 @@ struct SettingsView: View {
                 HStack(spacing: 10) {
                     Button(reauthing ? "Signing in…" : "Re-sign in") { reauth() }.buttonStyle(.bordered).disabled(reauthing)
                     Button("Sign out", role: .destructive) { signOut() }.buttonStyle(.borderedProminent).tint(.red)
+                        .accessibilityIdentifier("settings.signout")
                 }
                 if let e = reauthError { Text(e).font(.footnote).foregroundStyle(.red) }
             }
@@ -46,6 +47,7 @@ struct SettingsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
+                    .accessibilityIdentifier("settings.base")
                 HStack(spacing: 10) {
                     Button("Save") {
                         prefs.baseUrl = Prefs.normalizeBase(base)
@@ -56,8 +58,9 @@ struct SettingsView: View {
                     Button(testing ? "Testing…" : "Test connection") { test() }
                         .buttonStyle(.bordered)
                         .disabled(testing)
+                        .accessibilityIdentifier("settings.test")
                 }
-                if let t = testResult { Text(t).font(.footnote) }
+                if let t = testResult { Text(t).font(.footnote).accessibilityIdentifier("settings.testResult") }
             }
             Section {
                 Text("Folderbird • v\(appVersion())").font(.caption).foregroundStyle(.secondary)

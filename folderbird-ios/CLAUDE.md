@@ -24,3 +24,8 @@ Read `README.md` first: it documents the features, the iPad layout, how previews
 - **CI**: `.github/workflows/ios-build.yml` builds the simulator app unsigned on every push to `main`, asserts both
   targets were built, the extension embedded and both privacy manifests present, prints the Swift warning count
   (keep it at 0) and uploads the app plus the full xcodebuild log.
+- **UI tests**: `FolderbirdUITests/ScreenshotTests.swift` (XCUITest) + `tools/mockserver.py` (a stand-in `/api/v1`)
+  + `.github/workflows/ios-ui-test.yml` (macOS runner, iPhone + iPad simulators, PNGs committed to the branch). The
+  views it drives carry `accessibilityIdentifier`s and the app honours `FB_UITEST*` launch variables through
+  `Folderbird/App/UITestHooks.swift` — keep both when changing a screen. `NSAllowsLocalNetworking` in `project.yml`
+  exists for the mock on 127.0.0.1.

@@ -1,0 +1,267 @@
+name: Folderbird iOS UI test (screenshots)
+
+# Drives the app through XCUITest on iPhone and iPad simulators and saves a PNG at every screen, so the app can
+# be seen working without a Mac at hand. Two backends:
+#   mock — tools/mockserver.py on the runner stands in for /api/v1 (fake fleet + files); no credentials.
+#   real — a Folderbird server with a real PC: needs the repository secret FB_IOS_TEST_APIKEY (a scoped key:
+#          devices:read, browse, download, search, exec) and a PC that is online on that account.
+# The PNGs are committed to the branch under ios-screenshots/run-<n>/ (and uploaded as an artifact), because the
+# Actions artifact store is not reachable from every place the screenshots are wanted.
+# Cost: GitHub bills macOS minutes at 10x — a run is roughly 20 minutes of runner time.
+#
+# Two ways to start it: Actions → Run workflow (the inputs below), or a push to the branch whose commit message
+# carries [ui-test] (mock) or [ui-test:real] — because GitHub only registers a workflow_dispatch once the file is
+# on the DEFAULT branch, the push route is what works while the project is parked on a side branch.
+on:
+  push:
+    branches: [ ccr-16ba29e8-ctyi27 ]
+    paths:
+      - 'folderbird-ios/**'
+      - '.github/workflows/folderbird-ios-ui-test.yml'
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: "mock = local stand-in server (no credentials) · real = a Folderbird server + the FB_IOS_TEST_APIKEY secret"
+        type: choice
+        options: [mock, real]
+        default: mock
+      base_url:
+        description: "Server URL when backend=real (ignored for mock)"
+        default: "https://folderbird.com"
+      device_name:
+        description: "backend=real: the PC to open, as named on My Devices (empty = the first online one)"
+        default: ""
+      writes:
+        description: "backend=real: also create a test folder on that PC (the mock run always does)"
+        type: boolean
+        default: false
+      simulators:
+        description: "Comma-separated simulator names (fallbacks apply if a name is missing on the runner)"
+        default: "iPhone 16 Pro,iPad Pro 13-inch (M4)"
+      commit_screenshots:
+        description: "Commit the PNGs to this branch under ios-screenshots/"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-ui-test-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ui-test:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ui-test')
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: folderbird-ios
+    env:
+      # The dispatch inputs, or their equivalents for the push route (every input is empty on a push).
+      BACKEND: ${{ inputs.backend || (contains(github.event.head_commit.message, '[ui-test:real]') && 'real' || 'mock') }}
+      BASE_URL: ${{ inputs.base_url || 'https://folderbird.com' }}
+      DEVICE_NAME: ${{ inputs.device_name || '' }}
+      WRITES: ${{ inputs.writes && '1' || '0' }}
+      SIMS: ${{ inputs.simulators || 'iPhone 16 Pro,iPad Pro 13-inch (M4)' }}
+      COMMIT_SHOTS: ${{ (github.event_name == 'push' || inputs.commit_screenshots) && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i ios || true
+          python3 --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Pick simulators
+        id: sims
+        run: |
+          python3 - <<'PY' > "$RUNNER_TEMP/sims.json"
+          import json, subprocess, os, sys
+          want = [s.strip() for s in os.environ["SIMS"].split(",") if s.strip()]
+          data = json.loads(subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]))
+          avail = []
+          for rt, devs in data["devices"].items():
+              if "iOS" not in rt:
+                  continue
+              for d in devs:
+                  avail.append((rt, d["name"], d["udid"]))
+          avail.sort(key=lambda t: t[0], reverse=True)            # newest iOS runtime first
+          fallbacks = {
+              "iPhone": ["iPhone 16 Pro", "iPhone 16", "iPhone 15 Pro", "iPhone 15", "iPhone 17 Pro", "iPhone 17"],
+              "iPad": ["iPad Pro 13-inch (M4)", "iPad Pro 13-inch (M5)", "iPad Air 13-inch (M2)", "iPad Air 13-inch (M3)",
+                       "iPad (10th generation)", "iPad (A16)"],
+          }
+          picked = []
+          for w in want:
+              cands = [w] + fallbacks["iPad" if w.lower().startswith("ipad") else "iPhone"]
+              hit = next(((n, u) for c in cands for (rt, n, u) in avail if n == c), None)
+              if hit:
+                  picked.append(hit)
+              else:
+                  print(f"::warning::no simulator for {w}; available: {sorted(set(n for _, n, _ in avail))}", file=sys.stderr)
+          if not picked:
+              print("::error::no usable simulator", file=sys.stderr)
+              sys.exit(1)
+          print(json.dumps(picked))
+          PY
+          echo "picked: $(cat "$RUNNER_TEMP/sims.json")"
+
+      - name: Start the mock server
+        if: env.BACKEND == 'mock'
+        run: |
+          nohup python3 tools/mockserver.py --port 8787 > mock.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8787/healthz && break; sleep 1; done
+          echo; curl -fsS -H "Authorization: Bearer fbk_mock_0123456789abcdef0123456789abcdef" http://127.0.0.1:8787/api/v1/devices | head -c 200; echo
+
+      - name: Check the real-server inputs
+        if: env.BACKEND == 'real'
+        env:
+          FB_KEY: ${{ secrets.FB_IOS_TEST_APIKEY }}
+          FB_BASE: ${{ env.BASE_URL }}
+        run: |
+          if [ -z "$FB_KEY" ]; then
+            echo "::error::backend=real needs the repository secret FB_IOS_TEST_APIKEY (a scoped Folderbird API key); it is not set"
+            exit 1
+          fi
+          echo "::add-mask::$FB_KEY"
+          curl -sS -o /dev/null -w "GET $FB_BASE/api/v1/devices -> HTTP %{http_code}\n" -H "Authorization: Bearer $FB_KEY" "$FB_BASE/api/v1/devices"
+
+      - name: Build for testing (iOS Simulator, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing -project Folderbird.xcodeproj -scheme Folderbird \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO 2>&1 | tee build.log | grep -E "error:|warning:|BUILD|\*\* " || true
+          grep -q "BUILD SUCCEEDED" build.log
+          ls build/Build/Products/*.xctestrun
+          echo "Swift warnings: $(grep -cE '\.swift:[0-9]+:[0-9]+: warning:' build.log || true)"
+
+      - name: Run the UI tests on each simulator
+        env:
+          TEST_RUNNER_FB_TEST_MODE: ${{ env.BACKEND }}
+          TEST_RUNNER_FB_TEST_BASEURL: ${{ env.BACKEND == 'real' && env.BASE_URL || 'http://127.0.0.1:8787' }}
+          TEST_RUNNER_FB_TEST_APIKEY: ${{ env.BACKEND == 'real' && secrets.FB_IOS_TEST_APIKEY || '' }}
+          TEST_RUNNER_FB_TEST_DEVICE: ${{ env.DEVICE_NAME }}
+          TEST_RUNNER_FB_TEST_WRITES: ${{ (env.BACKEND == 'mock' || env.WRITES == '1') && '1' || '0' }}
+        run: |
+          # A hardware keyboard attached to the simulator stops XCUITest's typeText from working.
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+          XCTESTRUN=$(ls build/Build/Products/*.xctestrun | head -1)
+          SHOTS="$GITHUB_WORKSPACE/shots"; RESULTS="$GITHUB_WORKSPACE/results"
+          mkdir -p "$SHOTS" "$RESULTS"
+          python3 -c 'import json,sys; [print(n+"\t"+u) for n,u in json.load(open(sys.argv[1]))]' "$RUNNER_TEMP/sims.json" > "$RUNNER_TEMP/sims.tsv"
+          while IFS=$'\t' read -r NAME UDID; do
+            slug=$(echo "$NAME" | tr -c 'A-Za-z0-9\n' '-' | sed 's/-*$//')
+            echo "=== $NAME ($UDID) -> $slug"
+            xcrun simctl boot "$UDID" 2>/dev/null || true
+            xcrun simctl bootstatus "$UDID" -b || true
+            export TEST_RUNNER_FB_SHOT_DIR="$SHOTS/$slug"
+            mkdir -p "$TEST_RUNNER_FB_SHOT_DIR"
+            set +e
+            xcodebuild test-without-building -xctestrun "$XCTESTRUN" \
+              -destination "platform=iOS Simulator,id=$UDID" \
+              -only-testing:FolderbirdUITests \
+              -resultBundlePath "$RESULTS/$slug.xcresult" \
+              2>&1 | tee "test-$slug.log" | grep -E "Test Case|Test Suite|error:|\*\* |Executed" || true
+            rc=${PIPESTATUS[0]}
+            set -e
+            echo "xcodebuild exit $rc for $NAME"
+            [ "$rc" = "0" ] || echo "$NAME: xcodebuild exit $rc" >> "$RESULTS/failures.txt"
+            echo "screenshots written: $(ls "$TEST_RUNNER_FB_SHOT_DIR" | wc -l | tr -d ' ')"
+            xcrun simctl shutdown "$UDID" 2>/dev/null || true
+          done < "$RUNNER_TEMP/sims.tsv"
+
+      - name: Collect screenshots and test summaries
+        if: always()
+        run: |
+          SHOTS="$GITHUB_WORKSPACE/shots"; RESULTS="$GITHUB_WORKSPACE/results"
+          for r in "$RESULTS"/*.xcresult; do
+            [ -d "$r" ] || continue
+            slug=$(basename "$r" .xcresult)
+            xcrun xcresulttool get test-results summary --path "$r" > "$RESULTS/$slug-summary.json" 2>/dev/null || true
+            xcrun xcresulttool get test-results tests --path "$r" > "$RESULTS/$slug-tests.json" 2>/dev/null || true
+            # the tests write the PNGs straight to disk; the attachments inside the result bundle are the fallback
+            if [ -z "$(ls -A "$SHOTS/$slug" 2>/dev/null)" ]; then
+              mkdir -p "$SHOTS/$slug/attachments"
+              xcrun xcresulttool export attachments --path "$r" --output-path "$SHOTS/$slug/attachments" 2>/dev/null || true
+            fi
+          done
+          # JPEG copies (≤1600 px) for the commit: a 2x iPad PNG is ~1.5 MB, which adds up over many runs
+          JPG="$GITHUB_WORKSPACE/shots-jpg"
+          find "$SHOTS" -name '*.png' | while read -r png; do
+            rel="${png#$SHOTS/}"; out="$JPG/${rel%.png}.jpg"
+            mkdir -p "$(dirname "$out")"
+            sips -s format jpeg -s formatOptions 82 -Z 1600 "$png" --out "$out" > /dev/null 2>&1 || cp "$png" "$out.png"
+          done
+          echo "=== screenshots"; find "$SHOTS" -type f | sort
+          du -sh "$SHOTS" "$JPG" 2>/dev/null || true
+          echo "=== verdicts"
+          for s in "$RESULTS"/*-summary.json; do
+            [ -f "$s" ] || continue
+            python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(sys.argv[1].split("/")[-1], d.get("result"), "passed", d.get("passedTests"), "failed", d.get("failedTests"), "skipped", d.get("skippedTests"))' "$s" || true
+          done
+          cat "$RESULTS/failures.txt" 2>/dev/null || echo "no xcodebuild failures recorded"
+
+      - name: Upload screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ui-test-${{ github.run_number }}
+          path: |
+            shots
+            results/*.json
+            results/failures.txt
+            folderbird-ios/mock.log
+            folderbird-ios/test-*.log
+            folderbird-ios/build.log
+          if-no-files-found: warn
+
+      - name: Commit the screenshots to the branch
+        if: always() && env.COMMIT_SHOTS == '1'
+        working-directory: ${{ github.workspace }}
+        env:
+          RUN: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          dest="ios-screenshots/run-$RUN"
+          mkdir -p "$dest"
+          cp -R shots-jpg/. "$dest/" 2>/dev/null || true
+          cp results/*-summary.json results/*-tests.json results/failures.txt "$dest/" 2>/dev/null || true
+          # logs only for the mock run — a real-server log stays in the artifact (a key must never land in git)
+          [ "$BACKEND" = "mock" ] && cp folderbird-ios/mock.log folderbird-ios/test-*.log "$dest/" 2>/dev/null || true
+          {
+            echo "# iOS UI test run $RUN ($BACKEND backend)"
+            echo
+            echo "Workflow run: $RUN_URL"
+            echo
+            for d in "$dest"/*/; do
+              [ -d "$d" ] || continue
+              echo "## $(basename "$d")"; echo
+              for f in $(cd "$d" && find . -name '*.jpg' | sort); do
+                echo "- \`$(basename "$f")\`"
+              done
+              echo
+            done
+            echo "## Verdicts"; echo
+            for s in "$dest"/*-summary.json; do
+              [ -f "$s" ] || continue
+              python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("-", sys.argv[1].split("/")[-1].replace("-summary.json",""), ":", d.get("result"), "· passed", d.get("passedTests"), "· failed", d.get("failedTests"), "· skipped", d.get("skippedTests"))' "$s" || true
+            done
+            [ -f "$dest/failures.txt" ] && { echo; echo "xcodebuild failures:"; sed 's/^/- /' "$dest/failures.txt"; }
+          } > "$dest/README.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest"
+          git commit -m "iOS UI test screenshots, run $RUN ($BACKEND) [skip ci]" || { echo "nothing to commit"; exit 0; }
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+          echo "committed $(git rev-parse --short HEAD) to $GITHUB_REF_NAME"

@@ -157,3 +157,30 @@ No third-party dependencies.
 API categories the code uses — the App Group's `UserDefaults` (reasons `1C8F.1` for the app-group suite the share extension shares, plus `CA92.1` for the `.standard` fallback) and file timestamps for the preview
 cache sweep (`C617.1`). App Store Connect rejects an upload without them (ITMS-91053); CI checks that both bundles carry
 one. If you add a required-reason API (disk space, system boot time, keyboard list, …), add its category and reason.
+
+## UI tests and screenshots
+
+`FolderbirdUITests/ScreenshotTests.swift` is an XCUITest run that walks the app like a person — sign-in, devices,
+browse, previews (text, PDF, Office, image), search, the console with the destructive-command confirmation, a new
+folder, settings and theme, sign-out — and saves a PNG at every screen. It is the way to *see* the app working
+without a Mac: `.github/workflows/ios-ui-test.yml` runs it on GitHub's macOS runners for an iPhone and an iPad
+simulator and commits the PNGs to the branch under `ios-screenshots/run-<n>/` (also uploaded as an artifact).
+
+Two backends, chosen when the workflow is dispatched:
+
+- **mock** (default, no credentials): `tools/mockserver.py` stands in for `/api/v1` with a fictional fleet
+  (HOME-DESKTOP online, OFFICE-LAPTOP slow, WORKSHOP-PC offline, HOME-NAS a Linux box) and a small file system —
+  the same answers the real server gives, including 401 for a bad key, 409 `confirm_destructive_required` and 504
+  for an offline PC. Deterministic and repeatable.
+- **real**: a Folderbird server with a real PC. Needs the repository secret `FB_IOS_TEST_APIKEY` (a scoped key:
+  devices:read, browse, download, search, exec) and a PC that is online on that account; `base_url` picks the
+  server, `device_name` the PC, `writes` whether a test folder is created on it.
+
+Locally on a Mac: `python3 tools/mockserver.py &`, then **Product › Test** in Xcode (the scheme's test action), or
+`xcodebuild test -scheme Folderbird -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FolderbirdUITests`
+with `TEST_RUNNER_FB_SHOT_DIR=/tmp/shots` to get the PNGs on disk.
+
+The app reads a few launch-environment variables **only when `FB_UITEST=1`** (`Folderbird/App/UITestHooks.swift`:
+reset, server URL, pre-seeded key, animations off); a normal launch never carries them. Views the tests drive carry
+`accessibilityIdentifier`s (`signin.*`, `devices.*`, `device.row.<online|offline>.<id>`, `browse.*`, `console.*`,
+`settings.*`) — keep them when restyling.

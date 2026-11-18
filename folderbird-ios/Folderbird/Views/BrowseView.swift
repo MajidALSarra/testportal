@@ -133,21 +133,26 @@ struct BrowseView: View {
                     Image(systemName: "plus")
                 }
                 .help("Upload or create a folder")
+                .accessibilityIdentifier("browse.add")
                 Button { Task { await model.goUp() } } label: { Image(systemName: "arrow.up") }
                     .keyboardShortcut(.upArrow, modifiers: .command)
                     .help("Up one folder")
+                    .accessibilityIdentifier("browse.up")
             }
             Button { model.openConsole() } label: { Image(systemName: "terminal") }
                 .keyboardShortcut("t", modifiers: .command)
                 .help("Command console")
+                .accessibilityIdentifier("browse.console")
             Button {
                 if model.searchOpen { model.closeSearch() } else { model.searchOpen = true }
             } label: { Image(systemName: "magnifyingglass") }
                 .keyboardShortcut("f", modifiers: .command)
                 .help("Search")
+                .accessibilityIdentifier("browse.search")
             Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .keyboardShortcut("r", modifiers: .command)
                 .help("Refresh")
+                .accessibilityIdentifier("browse.refresh")
         }
     }
 

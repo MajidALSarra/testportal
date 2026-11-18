@@ -5,6 +5,11 @@ struct FolderbirdApp: App {
     @StateObject private var prefs = Prefs.shared
     @StateObject private var auth = AuthState.shared
 
+    init() {
+        // Inert unless the XCUITest runner sets FB_UITEST=1 (see UITestHooks).
+        UITestHooks.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

@@ -55,13 +55,16 @@ struct DevicesView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { showAdd = true } label: { Image(systemName: "plus") }
                     .help("Add a device")
+                    .accessibilityIdentifier("devices.add")
                 // ⇧⌘R on iPad, where ⌘R belongs to the folder listing shown beside this sidebar.
                 Button { Task { await reload() } } label: { Image(systemName: "arrow.clockwise") }
                     .keyboardShortcut("r", modifiers: mode == .sidebar ? EventModifiers([.command, .shift]) : EventModifiers.command)
                     .help("Refresh devices")
+                    .accessibilityIdentifier("devices.refresh")
                 Button { showSettings = true } label: { Image(systemName: "gearshape") }
                     .keyboardShortcut(",", modifiers: .command)
                     .help("Account & settings")
+                    .accessibilityIdentifier("devices.settings")
             }
         }
         .sheet(isPresented: $showAdd) { AddDeviceSheet() }
@@ -222,9 +225,13 @@ struct DeviceRow: View {
                 Button(action: c) { Image(systemName: "terminal").foregroundStyle(FB.blue) }
                     .buttonStyle(.borderless)
                     .help("Command console")
+                    .accessibilityIdentifier("device.console.\(device.idStr)")
             }
         }
         .contentShape(Rectangle())
+        // The UI tests find a row by state without knowing the fleet: device.row.online.<id> / device.row.offline.<id>.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("device.row.\(device.isOnline ? "online" : "offline").\(device.idStr)")
     }
 }
 

@@ -74,6 +74,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
+          # Loopback / LAN hosts over plain http — the UI tests' mock server on 127.0.0.1 (tools/mockserver.py).
+          NSAllowsLocalNetworking: true
         # "Sign in with Folderbird" redirect target (folderbird://auth) — the value the server allowlists.
         CFBundleURLTypes:
           - CFBundleURLName: com.folderbird.companion.auth
@@ -117,12 +119,33 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.folderbird.companion.share
         APPLICATION_EXTENSION_API_ONLY: "YES"
 
+  # XCUITest screenshot run — see FolderbirdUITests/ScreenshotTests.swift and .github/workflows/ios-ui-test.yml.
+  FolderbirdUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: FolderbirdUITests
+    dependencies:
+      - target: Folderbird
+    info:
+      path: FolderbirdUITests/Info.plist
+      properties: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.folderbird.companion.uitests
+        TEST_TARGET_NAME: Folderbird
+
 schemes:
   Folderbird:
     build:
       targets:
         Folderbird: all
+        FolderbirdUITests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - FolderbirdUITests
     archive:
       config: Release

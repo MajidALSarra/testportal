@@ -69,10 +69,12 @@ struct ConsoleView: View {
                         .submitLabel(.send)
                         .focused($focused)
                         .onSubmit { run() }
+                        .accessibilityIdentifier("console.input")
                     Button { run() } label: { Image(systemName: "paperplane.fill") }
                         .buttonStyle(.borderedProminent)
                         .disabled(model.consoleBusy || cmd.trimmingCharacters(in: .whitespaces).isEmpty)
                         .help("Run")
+                        .accessibilityIdentifier("console.send")
                 }
             }
             .padding(.horizontal, 12)
