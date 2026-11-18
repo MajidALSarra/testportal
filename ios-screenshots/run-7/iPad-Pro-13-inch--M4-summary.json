@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "04A9C222-F4D9-4FD4-98BE-4054EEE6F66B",
+        "deviceName" : "iPad Pro 13-inch (M4)",
+        "modelName" : "iPad Pro 13-inch (M4)",
+        "osBuildNumber" : "23C54",
+        "osVersion" : "26.2",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 3,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "Folderbird · Built with macOS 15.8.2",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1795014953.949,
+  "passedTests" : 3,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1795014710.529,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - Folderbird",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 3
+}

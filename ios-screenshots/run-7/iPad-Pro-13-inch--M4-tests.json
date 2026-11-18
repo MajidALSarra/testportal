@@ -1,0 +1,71 @@
+{
+  "devices" : [
+    {
+      "architecture" : "arm64",
+      "deviceId" : "04A9C222-F4D9-4FD4-98BE-4054EEE6F66B",
+      "deviceName" : "iPad Pro 13-inch (M4)",
+      "modelName" : "iPad Pro 13-inch (M4)",
+      "osBuildNumber" : "23C54",
+      "osVersion" : "26.2",
+      "platform" : "iOS Simulator"
+    }
+  ],
+  "testNodes" : [
+    {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "duration" : "39s",
+                  "durationInSeconds" : 39.33287799358368,
+                  "name" : "test01_SignInScreens()",
+                  "nodeIdentifier" : "ScreenshotTests/test01_SignInScreens()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests/test01_SignInScreens",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "2m 24s",
+                  "durationInSeconds" : 144.32423794269562,
+                  "name" : "test02_SignedInJourney()",
+                  "nodeIdentifier" : "ScreenshotTests/test02_SignedInJourney()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests/test02_SignedInJourney",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                },
+                {
+                  "duration" : "19s",
+                  "durationInSeconds" : 19.11460506916046,
+                  "name" : "test03_LaunchSignedIn()",
+                  "nodeIdentifier" : "ScreenshotTests/test03_LaunchSignedIn()",
+                  "nodeIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests/test03_LaunchSignedIn",
+                  "nodeType" : "Test Case",
+                  "result" : "Passed"
+                }
+              ],
+              "name" : "ScreenshotTests",
+              "nodeIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests/ScreenshotTests",
+              "nodeType" : "Test Suite",
+              "result" : "Passed"
+            }
+          ],
+          "name" : "FolderbirdUITests",
+          "nodeIdentifierURL" : "test://com.apple.xcode/Folderbird/FolderbirdUITests",
+          "nodeType" : "UI test bundle",
+          "result" : "Passed"
+        }
+      ],
+      "name" : "Folderbird",
+      "nodeType" : "Test Plan",
+      "result" : "Passed"
+    }
+  ],
+  "testPlanConfigurations" : [
+    {
+      "configurationId" : "1",
+      "configurationName" : "Test Scheme Action"
+    }
+  ]
+}
